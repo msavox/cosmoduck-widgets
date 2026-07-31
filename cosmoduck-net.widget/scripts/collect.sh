@@ -1,40 +1,31 @@
 #!/bin/bash
-# Cosmoduck · rete — SSID + down/up (delta netstat) + storico per sparkline.
+# Cosmoduck · rete — SSID + down/up.
+# Velocità calcolata campionando netstat DUE volte nello stesso run (dt=0.7s):
+# nessun file di stato condiviso → sicuro con più monitor (Übersicht esegue il
+# widget su ogni schermo, e istanze concorrenti non si corrompono a vicenda).
 export LC_ALL=C PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
-IFACE=$(route get default 2>/dev/null | awk '/interface:/{print $2}'); [ -z "$IFACE" ] && IFACE="en0"
-CACHE="$HOME/.cache"; mkdir -p "$CACHE"
-state="$CACHE/cosmoduck-net.state"
-histD="$CACHE/cosmoduck-net.dhist"
-histU="$CACHE/cosmoduck-net.uhist"
 
-# SSID — su macOS 14+ networksetup viene oscurato: prima ipconfig getsummary
-# (funziona anche su Sequoia), poi networksetup. macOS restituisce il letterale
-# "<redacted>" se manca il permesso Localizzazione all'app chiamante (Übersicht):
-# in quel caso si ripiega sull'etichetta della porta hardware (es. "Wi-Fi").
+IFACE=$(route get default 2>/dev/null | awk '/interface:/{print $2}'); [ -z "$IFACE" ] && IFACE="en0"
+
+# --- SSID (macOS 14+: ipconfig getsummary; fallback etichetta porta) ---
 ssid=$(ipconfig getsummary "$IFACE" 2>/dev/null | awk -F' : ' '/^[[:space:]]+SSID : /{print $2; exit}')
 [ -z "$ssid" ] && ssid=$(networksetup -getairportnetwork "$IFACE" 2>/dev/null | awk -F': ' '/Current Wi-Fi Network/{print $2}')
 case "$ssid" in ""|*"not associated"*|*"not currently"*|*"Error"*|"<redacted>")
   ssid=$(networksetup -listallhardwareports 2>/dev/null | awk -v i="$IFACE" '/Hardware Port:/{p=$0} $0 ~ "Device: "i" *$"{sub(/Hardware Port: /,"",p); print p; exit}')
-  [ -z "$ssid" ] && ssid="$IFACE"
+  [ -z "$ssid" ] && ssid="$IFACE" ;;
 esac
+ssid=$(printf '%s' "$ssid" | tr -d '"\\')   # sanitizza per il JSON
 
-read -r ib ob < <(netstat -ibn -I "$IFACE" 2>/dev/null | awk 'NR==2{print $7" "$10}')
-now=$(date +%s)
-dspeed=0; uspeed=0
-if [ -f "$state" ] && [ -n "$ib" ]; then
-  read -r pib pob pt < "$state"
-  dt=$(( now - pt )); [ "$dt" -le 0 ] && dt=1
-  dspeed=$(( (ib - pib) / dt )); [ "$dspeed" -lt 0 ] && dspeed=0
-  uspeed=$(( (ob - pob) / dt )); [ "$uspeed" -lt 0 ] && uspeed=0
+# --- velocità: due letture a distanza dt ---
+read -r ib1 ob1 < <(netstat -ibn -I "$IFACE" 2>/dev/null | awk 'NR==2{print $7" "$10}')
+sleep 0.7
+read -r ib2 ob2 < <(netstat -ibn -I "$IFACE" 2>/dev/null | awk 'NR==2{print $7" "$10}')
+d=0; u=0
+if [ -n "$ib1" ] && [ -n "$ib2" ]; then
+  d=$(awk -v a="$ib1" -v b="$ib2" 'BEGIN{x=(b-a)/0.7; if(x<0||x>1e11)x=0; printf "%d", x}')
+  u=$(awk -v a="$ob1" -v b="$ob2" 'BEGIN{x=(b-a)/0.7; if(x<0||x>1e11)x=0; printf "%d", x}')
 fi
-[ -n "$ib" ] && echo "$ib $ob $now" > "$state"
+human(){ awk -v b="$1" 'BEGIN{split("B KiB MiB GiB TiB",U," ");i=1;while(b>=1024&&i<5){b/=1024;i++}printf "%.2f %s",b,U[i]}'; }
 
-human() { awk -v b="$1" 'BEGIN{split("B KiB MiB GiB",u," ");i=1;while(b>=1024&&i<4){b/=1024;i++}printf "%.2f %s",b,u[i]}'; }
-downH=$(human "$dspeed"); upH=$(human "$uspeed")
-
-# storico (ultimi 40 campioni) per sparkline
-push() { echo "$2" >> "$1"; tail -n 40 "$1" > "$1.tmp" && mv "$1.tmp" "$1"; }
-push "$histD" "$dspeed"; push "$histU" "$uspeed"
-arrD=$(paste -sd, "$histD" 2>/dev/null); arrU=$(paste -sd, "$histU" 2>/dev/null)
-
-echo "{\"ssid\":\"${ssid}\",\"down\":\"${downH}\",\"up\":\"${upH}\",\"dhist\":[${arrD:-0}],\"uhist\":[${arrU:-0}]}"
+printf '{"ssid":"%s","down":"%s","up":"%s","dbytes":%d,"ubytes":%d}\n' \
+  "$ssid" "$(human "$d")" "$(human "$u")" "$d" "$u"

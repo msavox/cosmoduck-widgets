@@ -10,6 +10,7 @@ style: """
   width: 150px
   height: 140px
   box-sizing: border-box
+  overflow: hidden
   color: #C8D9E8
   font-family: 'CDAbel', -apple-system, sans-serif
   background: rgba(16,24,34,0.55)

@@ -10,6 +10,7 @@ style: """
   width: 150px
   height: 140px
   box-sizing: border-box
+  overflow: hidden
   color: #C8D9E8
   font-family: 'CDAbel', -apple-system, sans-serif
   background: rgba(16,24,34,0.55)
@@ -154,14 +155,22 @@ update: (output, domEl) ->
   $(domEl).find('#ssid').text(d.ssid or "None")
   $(domEl).find('#down').text(d.down or "0 B")
   $(domEl).find('#up').text(d.up or "0 B")
+  # storico sparkline TENUTO SUL domEl (per-istanza) → sicuro con multi-monitor
+  push = (k, v) ->
+    v = 0 unless typeof v is 'number' and isFinite(v) and v >= 0
+    a = (domEl[k] or []).concat([v])
+    domEl[k] = a.slice(-40)
+    domEl[k]
+  dh = push('_cdDH', d.dbytes)
+  uh = push('_cdUH', d.ubytes)
   spark = (arr) ->
     arr = [0] unless arr and arr.length
     w = 107; h = 24; bw = w / 40
     max = Math.max.apply(null, arr.concat([1]))
     bars = arr.map((v, i) ->
-      bh = (v / max) * h
+      bh = Math.max(0, Math.min(h, (v / max) * h))
       "<rect x='#{(i*bw).toFixed(1)}' y='#{(h-bh).toFixed(1)}' width='#{(bw*0.8).toFixed(1)}' height='#{bh.toFixed(1)}' fill='#AED6F1'></rect>"
     ).join('')
     "<svg width='#{w}' height='#{h}' style='display:block'><rect width='#{w}' height='#{h}' fill='#1F3A5F' fill-opacity='0.35'></rect>#{bars}</svg>"
-  domEl.querySelector('#dspark').innerHTML = spark(d.dhist)
-  domEl.querySelector('#uspark').innerHTML = spark(d.uhist)
+  domEl.querySelector('#dspark').innerHTML = spark(dh)
+  domEl.querySelector('#uspark').innerHTML = spark(uh)

@@ -10,6 +10,7 @@ style: """
   width: 150px
   height: 140px
   box-sizing: border-box
+  overflow: hidden
   font-family: 'CDAbel', -apple-system, sans-serif
   color: #C8D9E8
   background: url('cosmoduck-disk.widget/icons.png') no-repeat top left / 140px 140px, rgba(16,24,34,0.55)
