@@ -88,6 +88,7 @@ style: """
     margin-bottom: 2px
   .txt .r .k
     width: 30px
+    margin-right: -2px
     flex: 0 0 auto
     color: #C8D9E8
     opacity: 0.9
@@ -110,8 +111,8 @@ render: -> """
   </svg>
   <div class="txt">
     <div class="r"><span class="k">CPU</span><span class="v" id="v-cpu">--%</span></div>
-    <div class="r"><span class="k">RAM</span><span class="v" id="v-ram">--%</span></div>
-    <div class="r"><span class="k">Disk</span><span class="v" id="v-disk">--%</span></div>
+    <div class="r"><span class="k">RAM</span><span class="v" id="v-ram">--GB</span></div>
+    <div class="r"><span class="k">Disk</span><span class="v" id="v-disk">--GB</span></div>
   </div>
   <div class="pos-indicator" id="coords">T: 0 L: 0</div>
 """
@@ -183,5 +184,5 @@ update: (output, domEl) ->
   ring('root-fg', d.diskRoot, 138.23)
   ring('data-fg', d.diskData, 81.68)
   $(domEl).find('#v-cpu').text("#{d.cpu}%")
-  $(domEl).find('#v-ram').text("#{d.mem}%")
-  $(domEl).find('#v-disk').text("#{d.diskData}%")
+  $(domEl).find('#v-ram').text("#{d.memFreeGB}GB")
+  $(domEl).find('#v-disk').text("#{d.diskFreeGB}GB")
