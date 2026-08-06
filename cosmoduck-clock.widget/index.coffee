@@ -18,7 +18,7 @@ style: """
   .lock-btn
     position: absolute
     top: 4px
-    left: 100px
+    left: 108px
     color: #AED6F1
     width: 15px
     height: 15px
@@ -65,7 +65,7 @@ style: """
 render: -> """
   <style>@font-face{font-family:'CDBebas';src:url('cosmoduck-clock.widget/fonts/BebasNeue-Regular.ttf') format('truetype');}</style>
   <div class="lock-btn" id="lock-toggle"></div>
-  <svg width="200" height="210" viewBox="0 0 200 210">
+  <svg width="216" height="252" viewBox="0 0 200 210" preserveAspectRatio="none">
     <text x="6" y="85"  class="big" fill="#5DADE2" transform="translate(-4,4)" id="hh1">00</text>
     <text x="6" y="85"  class="big" fill="#1F3A5F" id="hh2">00</text>
     <text x="6" y="180" class="big" fill="#1F3A5F" transform="translate(-4,4)" id="mm1">00</text>
