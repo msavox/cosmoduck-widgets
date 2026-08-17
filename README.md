@@ -38,7 +38,7 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 | **Network** | Wi‑Fi name + down/up speed with bar sparklines |
 | **Processes** | Top 3 CPU and top 3 RAM processes |
 | **Hardware Monitor** | CPU/GPU temperature + CPU/GPU/System power (via macmon) |
-| **Claude Code** | Model in use + session (5h) and weekly token usage with % fill bars and next reset time |
+| **Claude Code** | Model + reasoning effort in use, real session (5h) and weekly rate-limit usage with % fill bars and next reset time |
 
 ## Configuration
 - **Weather** — edit `cosmoduck-weather.widget/scripts/weather.sh` and set your own `city_id`
@@ -47,10 +47,42 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 - **Wi‑Fi name** — macOS 14+ hides the SSID (`<redacted>`) unless the app has **Location**
   permission. Grant Location to Übersicht to show the real network name; otherwise the widget
   falls back to the interface label (e.g. "Wi‑Fi").
-- **Claude Code** — reads the local CLI transcripts in `~/.claude/projects/**/*.jsonl` (the
-  Claude Code CLI only — the Claude desktop app stores its data elsewhere and is never counted).
-  The real account quota is **not** exposed locally, so the percentages are computed against
-  budgets you set at the top of `cosmoduck-cc.widget/scripts/collect.sh`:
+- **Claude Code** — token counts come from the local CLI transcripts in
+  `~/.claude/projects/**/*.jsonl` (the Claude Code CLI only — the Claude desktop app stores its
+  data elsewhere and is never counted). Bars turn amber past 80% and red past 92%.
+
+  **Real percentages (recommended).** Claude Code hands its status line the actual
+  `rate_limits` for the 5-hour and 7-day windows. Wire that up once and the widget shows real
+  percentages and real reset times, with nothing to calibrate:
+
+  ```bash
+  cp cosmoduck-cc.widget/scripts/statusline.sh ~/.claude/cosmoduck-statusline.sh
+  chmod +x ~/.claude/cosmoduck-statusline.sh
+  ```
+
+  then add to `~/.claude/settings.json`:
+
+  ```json
+  "statusLine": {
+    "type": "command",
+    "command": "bash ~/.claude/cosmoduck-statusline.sh",
+    "refreshInterval": 30
+  }
+  ```
+
+  The script caches the limits to `~/.claude/cosmoduck-ratelimits.json` and also prints a status
+  line with model, 5h/7d usage, context and cost. Two caveats: `rate_limits` is only sent to
+  Claude.ai Pro/Max subscribers after the first API response of a session, and the values only
+  refresh while a Claude Code session is open. Configuring any status line also removes most
+  footer keyboard hints.
+
+  With live limits the percentage comes from Anthropic while the token figure is still counted
+  locally from the transcripts, so the two are not the same measurement — the token figure is
+  labelled `local` to keep them from being read as a fraction of one another.
+
+  **Estimated fallback.** Without that cache — or once a cached window is past its reset — the
+  widget estimates from the transcripts and prefixes the percentage with `~`. Tune the estimate
+  at the top of `cosmoduck-cc.widget/scripts/collect.sh`:
 
   | Variable | Default | Meaning |
   |---|---|---|
@@ -60,9 +92,6 @@ Made for a MacBook Air M‑series, tuned on a notch display.
   | `WEEK_ANCHOR_DOW` | `0` | weekly reset day (0=Mon … 6=Sun) |
   | `WEEK_ANCHOR_HOUR` | `0` | weekly reset hour, local time |
   | `METRIC` | `bill` | `bill` = fresh input + cache creation + output; `tot` also adds cache reads |
-
-  Run `/usage` inside Claude Code to see your real limits and reset day, then tune the budgets
-  and the anchor to match. Bars turn amber past 80% and red past 92%.
 - **Layout** — each widget's `top` / `left` are at the top of its `index.coffee`. You can also
   just drag them; positions are remembered.
 

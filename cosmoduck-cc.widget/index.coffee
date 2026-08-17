@@ -81,6 +81,15 @@ style: """
     overflow: hidden
     white-space: nowrap
     text-overflow: ellipsis
+  .hdr .e
+    flex: 0 0 auto
+    margin-left: 5px
+    font-size: 9px
+    font-weight: 400
+    letter-spacing: 0.3px
+    text-transform: uppercase
+    color: #AED6F1
+    opacity: 0.6
 
   .grp
     margin-bottom: 6px
@@ -138,7 +147,7 @@ render: -> """
   <div class="lock-btn" id="lock-toggle"></div>
   <div class="hdr">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-    <span class="m" id="model">--</span>
+    <span class="m" id="model">--</span><span class="e" id="effort"></span>
   </div>
 
   <div class="grp">
@@ -235,17 +244,26 @@ update: (output, domEl) ->
     $(domEl).find("##{id}").css(width: "#{p}%", background: tone(p))
 
   $(domEl).find('#model').text(d.model or 'n/d')
+  $(domEl).find('#effort').text(d.effort or '')
+
+  # "~" davanti alla percentuale = stima locale su budget; senza = quota reale
+  # letta dalla cache della statusline.
+  mark = (o) -> if o.live then '' else '~'
+
+  # Con la quota reale il conteggio token viene dai transcript, quindi NON e' il
+  # numeratore della percentuale: si etichetta "local" per non farli leggere insieme.
+  used = (o) -> if o.live then "local #{o.human or '0'}" else (o.human or '0')
 
   s = d.session or {}
   fill('s-bar', s.pct)
-  $(domEl).find('#s-pct').text("#{s.pct ? 0}%").css(color: tone(s.pct or 0))
-  $(domEl).find('#s-used').text(s.human or '0')
+  $(domEl).find('#s-pct').text("#{mark(s)}#{s.pct ? 0}%").css(color: tone(s.pct or 0))
+  $(domEl).find('#s-used').text(used(s))
   $(domEl).find('#s-reset').text(if s.active then s.reset else 'idle')
 
   w = d.week or {}
   fill('w-bar', w.pct)
-  $(domEl).find('#w-pct').text("#{w.pct ? 0}%").css(color: tone(w.pct or 0))
-  $(domEl).find('#w-used').text(w.human or '0')
+  $(domEl).find('#w-pct').text("#{mark(w)}#{w.pct ? 0}%").css(color: tone(w.pct or 0))
+  $(domEl).find('#w-used').text(used(w))
   $(domEl).find('#w-reset').text(w.reset or '--')
 
   $(domEl).find('#h-used').text((d.hour or {}).human or '0')

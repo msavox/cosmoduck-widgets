@@ -3,9 +3,11 @@
 # Legge i transcript locali in ~/.claude/projects/<progetto>/<sessione>.jsonl:
 # ogni riga "assistant" porta timestamp + message.usage + message.model.
 #
-# NOTA: la quota reale dell'account NON e' disponibile in locale (nei transcript non
-# esiste alcun campo rate-limit). Le percentuali sono quindi calcolate su budget
-# configurabili qui sotto: tarali guardando /usage dentro Claude Code.
+# Le percentuali REALI arrivano da ~/.claude/cosmoduck-ratelimits.json, che scrive
+# scripts/statusline.sh se lo configuri come "statusLine" in ~/.claude/settings.json
+# (vedi README). Quando quella cache manca o e' scaduta si ricade sulla stima locale
+# calcolata sui budget configurabili qui sotto — nei transcript non esiste alcun
+# campo rate-limit, quindi senza statusline la quota vera non e' ricavabile.
 export LC_ALL=C PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
 # ─── configurazione ────────────────────────────────────────────────────────────
@@ -58,6 +60,7 @@ rows = []          # (timestamp, bill, tot)
 seen = set()       # dedup per requestId: i retry ripetono lo stesso record
 last_model = None
 last_model_ts = None
+last_effort = None
 
 for path in glob.glob(os.path.join(ROOT, "*", "*.jsonl")):
     try:
@@ -95,7 +98,9 @@ for path in glob.glob(os.path.join(ROOT, "*", "*.jsonl")):
 
             model = msg.get("model")
             if model and not model.startswith("<") and (last_model_ts is None or t > last_model_ts):
+                # "effort" e' un campo top-level del record, non dentro message.
                 last_model, last_model_ts = model, t
+                last_effort = d.get("effort")
 
             fresh  = (u.get("input_tokens") or 0) + (u.get("cache_creation_input_tokens") or 0)
             out    = u.get("output_tokens") or 0
@@ -126,7 +131,9 @@ hour_start = now - dt.timedelta(hours=1)
 hour_used = sum(r[idx] for r in rows if r[0] >= hour_start)
 
 def pct(used, budget):
-    return round(min(100.0, 100.0 * used / budget), 1)
+    # Intero: la quota reale ha questa granularita' e cosi' widget e statusline
+    # non mostrano mai due numeri diversi per lo stesso dato.
+    return int(round(min(100.0, 100.0 * used / budget)))
 
 def human(n):
     for lim, suf, div in ((1e9, "B", 1e9), (1e6, "M", 1e6), (1e3, "K", 1e3)):
@@ -157,22 +164,54 @@ def short(m):
         return "%s %s" % (fam.capitalize(), ver)
     return s.capitalize()
 
+# ── limiti reali dalla cache della statusline ────────────────────────────────
+# Ha la precedenza sulla stima: e' la quota vera dell'account. Una finestra gia'
+# scaduta (now >= resets_at) viene ignorata, perche' il valore in cache si
+# riferisce a un ciclo ormai chiuso.
+live = {}
+try:
+    with open(os.path.expanduser("~/.claude/cosmoduck-ratelimits.json")) as fh:
+        cached = json.load(fh).get("rate_limits") or {}
+    for key, win in (("session", "five_hour"), ("week", "seven_day")):
+        w = cached.get(win) or {}
+        p, r = w.get("used_percentage"), w.get("resets_at")
+        if p is None or r is None or now.timestamp() >= r:
+            continue
+        live[key] = (int(round(float(p))),
+                     dt.datetime.fromtimestamp(r, dt.timezone.utc).astimezone())
+except (OSError, ValueError, AttributeError):
+    pass
+
+sess = {
+    "used":   sess_used,
+    "human":  human(sess_used),
+    "pct":    pct(sess_used, SESSION_BUDGET),
+    "reset":  clock(sess_reset),
+    "active": sess_reset is not None,
+    "live":   False,
+}
+if "session" in live:
+    p, r = live["session"]
+    sess.update(pct=p, reset=clock(r), active=True, live=True)
+
+week = {
+    "used":  week_used,
+    "human": human(week_used),
+    "pct":   pct(week_used, WEEK_BUDGET),
+    "reset": stamp(week_reset),
+    "live":  False,
+}
+if "week" in live:
+    p, r = live["week"]
+    week.update(pct=p, reset=stamp(r), live=True)
+
 print(json.dumps({
     "model":  short(last_model),
     "modelId": last_model or "",
-    "session": {
-        "used":   sess_used,
-        "human":  human(sess_used),
-        "pct":    pct(sess_used, SESSION_BUDGET),
-        "reset":  clock(sess_reset),
-        "active": sess_reset is not None,
-    },
-    "week": {
-        "used":  week_used,
-        "human": human(week_used),
-        "pct":   pct(week_used, WEEK_BUDGET),
-        "reset": stamp(week_reset),
-    },
+    "effort": (last_effort or "") if isinstance(last_effort, str) else (
+        (last_effort or {}).get("level") or ""),
+    "session": sess,
+    "week": week,
     "hour": {
         "used":  hour_used,
         "human": human(hour_used),
