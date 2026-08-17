@@ -5,14 +5,14 @@ A blue, monospaced-glass widget set for macOS — a faithful port of the **Regul
 Made for a MacBook Air M‑series, tuned on a notch display.
 
 ## Preview
-![Preview](preview.png?v=1)
+![Preview](preview.png?v=2)
 
 ## Features
 - **Frosted glass** — translucent tinted panels with `backdrop-filter` blur, thin blue border and inner highlight. The blur picks up your wallpaper.
 - **Draggable & lockable** — click‑drag any widget to reposition; each has a small monochrome lock icon (shown on hover) to freeze it. Positions and lock state persist across reboots and refreshes (via `localStorage`).
 - **Real sensors on Apple Silicon** — CPU/GPU die temperature and power draw via [`macmon`](https://github.com/vladkens/macmon) (no `sudo`).
 - **Two‑layer clock** — large Bebas Neue digits with the original Cosmoduck colour‑inversion between hours and minutes.
-- **Ring gauges** — CPU, RAM and disk usage as arcs around chip/CPU glyphs, with a CPU/RAM/Disk legend.
+- **Ring gauges** — CPU, RAM and disk usage as arcs around chip/CPU glyphs, with a legend showing CPU load plus free RAM and free disk space.
 
 ## Installation
 1. **[Download `cosmoduck-widgets.zip`](https://github.com/msavox/cosmoduck-widgets/raw/main/cosmoduck-widgets.zip)**
@@ -33,7 +33,7 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 | Widget | Shows |
 |---|---|
 | **Clock** | `HH` over `MM` (two‑layer, colour‑inverted) + seconds |
-| **Disk / System** | Ring gauges for CPU, RAM, disk + CPU/RAM/Disk % legend |
+| **Disk / System** | Ring gauges for CPU, RAM, disk + legend with CPU %, free RAM and free disk |
 | **Weather** | OpenWeatherMap current conditions with a Feather glyph icon |
 | **Network** | Wi‑Fi name + down/up speed with bar sparklines |
 | **Processes** | Top 3 CPU and top 3 RAM processes |
