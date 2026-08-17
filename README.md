@@ -38,6 +38,7 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 | **Network** | Wi‑Fi name + down/up speed with bar sparklines |
 | **Processes** | Top 3 CPU and top 3 RAM processes |
 | **Hardware Monitor** | CPU/GPU temperature + CPU/GPU/System power (via macmon) |
+| **Claude Code** | Model in use + session (5h) and weekly token usage with % fill bars and next reset time |
 
 ## Configuration
 - **Weather** — edit `cosmoduck-weather.widget/scripts/weather.sh` and set your own `city_id`
@@ -46,6 +47,22 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 - **Wi‑Fi name** — macOS 14+ hides the SSID (`<redacted>`) unless the app has **Location**
   permission. Grant Location to Übersicht to show the real network name; otherwise the widget
   falls back to the interface label (e.g. "Wi‑Fi").
+- **Claude Code** — reads the local CLI transcripts in `~/.claude/projects/**/*.jsonl` (the
+  Claude Code CLI only — the Claude desktop app stores its data elsewhere and is never counted).
+  The real account quota is **not** exposed locally, so the percentages are computed against
+  budgets you set at the top of `cosmoduck-cc.widget/scripts/collect.sh`:
+
+  | Variable | Default | Meaning |
+  |---|---|---|
+  | `SESSION_BUDGET` | `1000000` | tokens per 5h session window |
+  | `WEEK_BUDGET` | `10000000` | tokens per weekly window |
+  | `SESSION_HOURS` | `5` | length of the session window |
+  | `WEEK_ANCHOR_DOW` | `0` | weekly reset day (0=Mon … 6=Sun) |
+  | `WEEK_ANCHOR_HOUR` | `0` | weekly reset hour, local time |
+  | `METRIC` | `bill` | `bill` = fresh input + cache creation + output; `tot` also adds cache reads |
+
+  Run `/usage` inside Claude Code to see your real limits and reset day, then tune the budgets
+  and the anchor to match. Bars turn amber past 80% and red past 92%.
 - **Layout** — each widget's `top` / `left` are at the top of its `index.coffee`. You can also
   just drag them; positions are remembered.
 

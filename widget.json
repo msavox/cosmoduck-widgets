@@ -1,7 +1,7 @@
 {
   "name": "cosmoduck-widgets",
-  "description": "Blue frosted-glass widget set: two-layer clock, ring gauges, weather, network, processes and real Apple-Silicon sensors (macmon). Draggable & lockable. A port of the Regulus/Cosmoduck Conky theme.",
+  "description": "Blue frosted-glass widget set: two-layer clock, ring gauges, weather, network, processes, real Apple-Silicon sensors (macmon) and Claude Code token usage. Draggable & lockable. A port of the Regulus/Cosmoduck Conky theme.",
   "author": "msavox",
-  "version": "1.0.3",
+  "version": "1.0.4",
   "image": "screenshot.png"
 }
