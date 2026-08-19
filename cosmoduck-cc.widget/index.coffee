@@ -127,6 +127,11 @@ style: """
     letter-spacing: 0.4px
   .last-hour .v
     color: #85C1E9
+  .last-hour .age
+    margin-left: 4px
+    font-size: 8px
+    letter-spacing: 0
+    opacity: 0.9
 
   .bar
     height: 6px
@@ -147,7 +152,7 @@ render: -> """
   <div class="lock-btn" id="lock-toggle"></div>
   <div class="hdr">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"></polygon></svg>
-    <span class="m" id="model">--</span><span class="e" id="effort"></span>
+    <span class="m" id="model">--</span><span class="e" id="effort"></span><span class="e" id="acct"></span>
   </div>
 
   <div class="grp">
@@ -163,7 +168,7 @@ render: -> """
   </div>
 
   <div class="last-hour">
-    <span class="k">LAST HOUR</span><span class="v" id="h-used">--</span>
+    <span class="k">LAST HOUR<span class="age" id="age"></span></span><span class="v" id="h-used">--</span>
   </div>
 
   <div class="pos-indicator" id="coords">T: 0 L: 0</div>
@@ -246,13 +251,15 @@ update: (output, domEl) ->
   $(domEl).find('#model').text(d.model or 'n/d')
   $(domEl).find('#effort').text(d.effort or '')
 
-  # "~" davanti alla percentuale = stima locale su budget; senza = quota reale
-  # letta dalla cache della statusline.
-  mark = (o) -> if o.live then '' else '~'
+  # src: "live" quota reale aggiornata · "stale" quota reale ma vecchia · "est"
+  # stima locale sui budget. Solo "live" e' un numero esatto e attuale, quindi
+  # tutto il resto porta la "~".
+  src = (o) -> o.src or (if o.live then 'live' else 'est')
+  mark = (o) -> if src(o) == 'live' then '' else '~'
 
-  # Con la quota reale il conteggio token viene dai transcript, quindi NON e' il
-  # numeratore della percentuale: si etichetta "local" per non farli leggere insieme.
-  used = (o) -> if o.live then "local #{o.human or '0'}" else (o.human or '0')
+  # Quando la percentuale e' la quota reale il conteggio token viene dai transcript,
+  # quindi NON e' il suo numeratore: si etichetta "local" per non leggerli insieme.
+  used = (o) -> if src(o) == 'est' then (o.human or '0') else "local #{o.human or '0'}"
 
   s = d.session or {}
   fill('s-bar', s.pct)
@@ -267,3 +274,27 @@ update: (output, domEl) ->
   $(domEl).find('#w-reset').text(w.reset or '--')
 
   $(domEl).find('#h-used').text((d.hour or {}).human or '0')
+
+  # Eta' del dato, accanto a LAST HOUR: quando la quota reale non e' piu' fresca
+  # e' l'unica cosa che distingue "21% adesso" da "21% di tre ore fa". Con dato
+  # live non si mostra nulla, cosi' la riga resta pulita nel caso normale.
+  ago = (sec) ->
+    return '' unless sec?
+    return "#{Math.round(sec / 60)}m" if sec < 3600
+    return "#{Math.round(sec / 3600)}h" if sec < 86400
+    "#{Math.round(sec / 86400)}g"
+
+  state = if src(s) == 'live' or src(w) == 'live' then 'live'
+  else if src(s) == 'stale' or src(w) == 'stale' then 'stale'
+  else 'est'
+
+  [txt, col] = switch state
+    when 'live'  then ['', '#C8D9E8']
+    when 'stale' then ["~#{ago(d.age)}", '#E59866']
+    else ['~stima', '#C8D9E8']
+
+  $(domEl).find('#age').text(txt).css(color: col)
+
+  # Etichetta manuale del login (ACCOUNT_LABEL): Claude Code non passa l'account
+  # alla statusline, quindi il widget non puo' dedurlo — o lo dici tu, o niente.
+  $(domEl).find('#acct').text(if d.label then "· #{d.label}" else '')

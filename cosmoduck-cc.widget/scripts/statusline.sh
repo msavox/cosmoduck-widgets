@@ -12,17 +12,43 @@
 # Configurato in ~/.claude/settings.json come "statusLine".
 export LC_ALL=C PATH="/usr/bin:/bin:/usr/sbin:/sbin:$PATH"
 
+# Quali sessioni possono scrivere la cache dei limiti. Anche Claude Code lanciato
+# dall'app desktop usa ~/.claude, quindi esegue QUESTA statusline: se lo si lascia
+# fare, la sua quota finisce nel widget al posto di quella del terminale (e con un
+# account diverso, se i due login non coincidono). I limiti sono per-account, la
+# cache e' un file solo: senza filtro vince l'ultima sessione che renderizza.
+CACHE_ENTRYPOINTS=${CACHE_ENTRYPOINTS-cli}
+
 CACHE="$HOME/.claude/cosmoduck-ratelimits.json"
 input=$(cat)
 
 # ── 1. cache dei limiti reali ─────────────────────────────────────────────────
+# L'entrypoint non e' nell'input della statusline, ma e' su quasi ogni record del
+# transcript (dalla terza riga in poi), e il transcript ce lo dice l'input.
+ENTRY=""
+TRANSCRIPT=$(printf '%s' "$input" | /usr/bin/jq -r '.transcript_path // empty' 2>/dev/null)
+if [ -n "$TRANSCRIPT" ] && [ -f "$TRANSCRIPT" ]; then
+  ENTRY=$(head -n 40 "$TRANSCRIPT" 2>/dev/null |
+    /usr/bin/jq -r 'select(type == "object" and .entrypoint != null) | .entrypoint' 2>/dev/null |
+    head -n 1)
+fi
+
+# Entrypoint sconosciuto (sessione appena nata, formato cambiato) = non si scrive:
+# meglio un dato vecchio, che il widget marca, che uno dell'account sbagliato.
+case " $CACHE_ENTRYPOINTS " in
+  *" $ENTRY "*) MAY_CACHE=1 ;;
+  *)            MAY_CACHE=0 ;;
+esac
+
 # Scrittura atomica (tmp + mv): il widget legge ogni 60s e non deve mai vedere
 # un file troncato a meta'.
-printf '%s' "$input" | /usr/bin/jq -c --argjson now "$(date +%s)" '
+if [ "$MAY_CACHE" = 1 ]; then
+printf '%s' "$input" | /usr/bin/jq -c --argjson now "$(date +%s)" --arg entry "$ENTRY" '
   if (.rate_limits // empty) then
-    {captured_at: $now, rate_limits: .rate_limits}
+    {captured_at: $now, entrypoint: $entry, rate_limits: .rate_limits}
   else empty end
 ' > "$CACHE.tmp" 2>/dev/null
+fi
 
 if [ -s "$CACHE.tmp" ]; then
   mv -f "$CACHE.tmp" "$CACHE"
