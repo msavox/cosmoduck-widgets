@@ -1,6 +1,6 @@
 # Cosmoduck Widgets for Übersicht
 
-A blue, monospaced-glass widget set for macOS — a faithful port of the **Regulus Dark / Cosmoduck** Conky theme (Linux) to [Übersicht](https://tracesof.net/uebersicht/). Big two‑layer clock, ring gauges, weather, network, processes and **real Apple‑Silicon sensors**, all on a subtle frosted‑glass panel.
+A blue, monospaced-glass widget set for macOS — a faithful port of the **Regulus Dark / Cosmoduck** Conky theme (Linux) to [Übersicht](https://tracesof.net/uebersicht/). Big two‑layer clock, calendar, ring gauges, weather, network, processes and **real Apple‑Silicon sensors**, all on a subtle frosted‑glass panel.
 
 Made for a MacBook Air M‑series, tuned on a notch display.
 
@@ -33,6 +33,7 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 | Widget | Shows |
 |---|---|
 | **Clock** | `HH` over `MM` (two‑layer, colour‑inverted) + seconds |
+| **Calendar** | Month grid with today highlighted; `‹ ›` to browse months, double-click a day to open it in Calendar.app |
 | **Disk / System** | Ring gauges for CPU, RAM, disk + legend with CPU %, free RAM and free disk |
 | **Weather** | OpenWeatherMap current conditions with a Feather glyph icon |
 | **Network** | Wi‑Fi name + down/up speed with bar sparklines |
@@ -158,6 +159,20 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 
   `CACHE_ENTRYPOINTS` (default `cli`) is the matching knob in `statusline.sh`, deciding which
   sessions may write the cache. Keep the two in agreement.
+- **Calendar** — sits under the clock, aligned to its column. The week starts on Monday; set
+  `WEEK_START = 0` in `afterRender:` (`cosmoduck-cal.widget/index.coffee`) for a Sunday-first
+  grid. The month always draws six rows, so the card never changes height.
+
+  `‹` and `›` browse months (the grid keeps whatever month you left it on — the minute refresh
+  does not snap it back); while you are away from the current month the date on the right turns
+  into a **TODAY** button that brings you home. **Double-clicking** a day opens **Calendar.app** on
+  that date, greyed-out days from the neighbouring months included — it takes two clicks because
+  raising an app to the front is too easy to trigger by accident on a single one.
+
+  Opening Calendar goes through `osascript`, so the first time raises the macOS prompt *"Übersicht
+  wants to control Calendar"* — allow it, or the double-click silently does nothing. You can revisit the
+  choice in *System Settings → Privacy & Security → Automation*. Both this and the drag need
+  **Enable Interaction** on in Übersicht's menu.
 - **Layout** — each widget's `top` / `left` are at the top of its `index.coffee`. You can also
   just drag them; positions are remembered.
 
