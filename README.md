@@ -94,13 +94,25 @@ Made for a MacBook Air M‑series, tuned on a notch display.
   **How fresh the reading is.** Limits only refresh while a CLI session is rendering its status
   line, so a cached figure can be hours old while still looking authoritative. It stays useful —
   within a window the quota can only go up, so an old reading is a valid lower bound — but the
-  widget now marks it. Next to `LAST HOUR`:
+  widget marks it. Next to `LAST HOUR`:
 
   | Marker | Meaning |
   |---|---|
-  | *(nothing)* | real quota, refreshed within `LIVE_TTL` |
+  | *(nothing)* | real quota, and still exact |
   | `~3h` | real quota, but that stale — the percentages also carry a `~` |
   | `~stima` | no usable cache; percentages are estimated from the transcripts |
+
+  Age alone does not make a reading stale: a cached figure can only have been overtaken by tokens
+  you actually spent. If no counted session has consumed anything since the capture, the number is
+  still exact no matter how old it is, and it is left unmarked — which is the normal state when
+  you simply stop using Claude Code. `LIVE_TTL` is the fallback for the window the transcripts
+  cannot vouch for (a capture older than the scan, another entrypoint on the same account).
+
+  **When a window expires.** A closed window does not decay into a guess: the next one starts at
+  zero, so if nothing was consumed after the reset the widget shows a real `0%` and rolls the
+  weekly reset forward by seven days. It zeroes itself at the scheduled time with Claude Code shut,
+  without waiting for a session to refresh the cache. The 5h window has no fixed grid — it opens on
+  the first message — so an expired one with no usage since simply reads `idle`.
 
   **Terminal only, by default.** Claude Code launched from the Claude desktop app uses the same
   `~/.claude`, so it runs this same status line and writes the same cache — and if it is signed
@@ -124,9 +136,12 @@ Made for a MacBook Air M‑series, tuned on a notch display.
   `ACCOUNT_LABEL` (e.g. `perso`, `lavoro`) adds a reminder next to the model name. It is a note to
   yourself, not something the widget verifies.
 
-  **Estimated fallback.** Without that cache — or once a cached window is past its reset — the
-  widget estimates from the transcripts and prefixes the percentage with `~`. The same
-  `ENTRYPOINTS` filter applies, so the estimate covers the same sessions as the live figures.
+  **Estimated fallback.** Without that cache — or when a window expired *and* was used again
+  before any status line could report the new figure — the widget estimates from the transcripts
+  and prefixes the percentage with `~`. The same `ENTRYPOINTS` filter applies, so the estimate
+  covers the same sessions as the live figures. When the real weekly boundary is known from the
+  cache it also anchors the estimate, so a fallback right after a reset starts from zero instead
+  of dragging in the previous week's tokens. `WEEK_ANCHOR_*` only applies when it is not.
   Tune the estimate at the top of `cosmoduck-cc.widget/scripts/collect.sh`:
 
   | Variable | Default | Meaning |
@@ -134,10 +149,10 @@ Made for a MacBook Air M‑series, tuned on a notch display.
   | `SESSION_BUDGET` | `1000000` | tokens per 5h session window |
   | `WEEK_BUDGET` | `10000000` | tokens per weekly window |
   | `SESSION_HOURS` | `5` | length of the session window |
-  | `WEEK_ANCHOR_DOW` | `0` | weekly reset day (0=Mon … 6=Sun) |
-  | `WEEK_ANCHOR_HOUR` | `0` | weekly reset hour, local time |
+  | `WEEK_ANCHOR_DOW` | `0` | weekly reset day (0=Mon … 6=Sun), when the real one is unknown |
+  | `WEEK_ANCHOR_HOUR` | `0` | weekly reset hour, local time, when the real one is unknown |
   | `METRIC` | `bill` | `bill` = fresh input + cache creation + output; `tot` also adds cache reads |
-  | `LIVE_TTL` | `900` | seconds a cached real quota stays fresh before being marked stale |
+  | `LIVE_TTL` | `900` | seconds a cached quota stays fresh when idleness cannot be verified |
   | `ENTRYPOINTS` | `cli` | which sessions to count; empty disables the filter |
   | `ACCOUNT_LABEL` | *(empty)* | optional reminder of which login you are on; empty hides it |
 

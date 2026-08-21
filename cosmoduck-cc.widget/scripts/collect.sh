@@ -72,8 +72,74 @@ if anchor > now_loc:
 week_start = anchor.astimezone(dt.timezone.utc)
 week_reset = anchor + dt.timedelta(days=7)
 
-# Solo i file toccati di recente possono contenere record recenti.
-scan_from = min(week_start, now - dt.timedelta(hours=SESSION_HOURS))
+# ── cache dei limiti reali ────────────────────────────────────────────────────
+# Si legge PRIMA di scansionare i transcript perche' da qui arrivano i confini veri
+# delle finestre, e sono loro a dire quanto indietro serve leggere.
+#
+# Non si prova a stabilire A QUALE account appartenga la lettura: Claude Code non
+# passa l'account alla statusline, e ~/.claude.json e' condiviso fra la CLI e
+# l'app Claude Desktop (ci si trovano i config cache di piu' login), quindi
+# qualsiasi etichetta ricavata da li' sarebbe una supposizione. In compenso la
+# cache la scrive solo la statusline, che gira solo dentro una sessione CLI:
+# l'app desktop non la tocca mai. Se cambi login nel terminale, la lettura del
+# login precedente resta valida fino al suo reset e poi decade da sola.
+SPANS = (("session", "five_hour", dt.timedelta(hours=SESSION_HOURS)),
+         ("week",    "seven_day", dt.timedelta(days=7)))
+
+cached_win = {}    # key -> (pct, fine finestra, durata finestra)
+cache_age  = None
+cap_at     = None  # istante della cattura, per capire se dopo e' successo qualcosa
+try:
+    with open(os.path.expanduser("~/.claude/cosmoduck-ratelimits.json")) as fh:
+        raw = json.load(fh)
+
+    # La statusline aggiornata scrive solo da sessioni ammesse, ma una cache
+    # lasciata li' da una versione precedente puo' venire da chiunque: se e'
+    # marcata e non e' ammessa, si scarta. Non marcata = si accetta (formato
+    # vecchio, viene rimpiazzata al primo render).
+    entry = raw.get("entrypoint")
+    if ENTRYPOINTS and entry is not None and entry not in ENTRYPOINTS:
+        raise ValueError("cache scritta da una sessione esclusa")
+
+    cap = raw.get("captured_at")
+    if cap is not None:
+        cap_at = dt.datetime.fromtimestamp(float(cap), dt.timezone.utc)
+        cache_age = max(0, int((now - cap_at).total_seconds()))
+
+    cached = raw.get("rate_limits") or {}
+    for key, wname, span_w in SPANS:
+        w = cached.get(wname) or {}
+        p, r = w.get("used_percentage"), w.get("resets_at")
+        if p is None or r is None:
+            continue
+        cached_win[key] = (int(round(float(p))),
+                           dt.datetime.fromtimestamp(float(r), dt.timezone.utc),
+                           span_w)
+except (OSError, ValueError, AttributeError, TypeError):
+    cached_win, cache_age, cap_at = {}, None, None
+
+def rolled(end, span_w):
+    """Finestra corrente sulla griglia di 'end': (inizio, fine) con fine > adesso."""
+    if end <= now:
+        end += ((now - end) // span_w + 1) * span_w
+    return end - span_w, end
+
+# La settimanale del server ha confini propri, che quasi mai coincidono con
+# WEEK_ANCHOR_*: se la cache ce li dice, si usano quelli anche per la stima locale.
+# Cosi' dopo un reset il conteggio riparte da zero insieme alla quota vera, invece
+# di trascinarsi i token della settimana precedente (ed esplodere a 100%).
+if "week" in cached_win:
+    _, w_end, w_span = cached_win["week"]
+    w_start, w_end = rolled(w_end, w_span)
+    week_start, week_reset = w_start, w_end.astimezone()
+
+# Solo i file toccati di recente possono contenere record recenti. Si legge anche
+# fino alla cattura della cache: serve a sapere se da allora e' stato consumato
+# qualcosa. Piu' di 8 giorni indietro non ha senso: nessuna finestra e' cosi' lunga.
+bounds = [week_start, now - dt.timedelta(hours=SESSION_HOURS)]
+if cap_at is not None:
+    bounds.append(cap_at)
+scan_from = max(min(bounds), now - dt.timedelta(days=8))
 mtime_cut = scan_from.timestamp() - 3600
 
 rows = []          # (timestamp, bill, tot)
@@ -205,57 +271,47 @@ def short(m):
         return "%s %s" % (fam.capitalize(), ver)
     return s.capitalize()
 
-# ── limiti reali dalla cache della statusline ────────────────────────────────
-# Ha la precedenza sulla stima: e' la quota vera dell'account. Una finestra gia'
-# scaduta (now >= resets_at) viene ignorata, perche' il valore in cache si
-# riferisce a un ciclo ormai chiuso.
+# ── risoluzione dei limiti reali ─────────────────────────────────────────────
+# La quota vera ha la precedenza sulla stima. Due casi da distinguere:
 #
-# Non si prova a stabilire A QUALE account appartenga la lettura: Claude Code non
-# passa l'account alla statusline, e ~/.claude.json e' condiviso fra la CLI e
-# l'app Claude Desktop (ci si trovano i config cache di piu' login), quindi
-# qualsiasi etichetta ricavata da li' sarebbe una supposizione. In compenso la
-# cache la scrive solo la statusline, che gira solo dentro una sessione CLI:
-# l'app desktop non la tocca mai. Se cambi login nel terminale, la lettura del
-# login precedente resta valida fino al suo reset e poi decade da sola; nel
-# frattempo l'eta' qui sotto dice quanto e' vecchia.
-live = {}
-cache_age = None
-try:
-    with open(os.path.expanduser("~/.claude/cosmoduck-ratelimits.json")) as fh:
-        raw = json.load(fh)
+#  · finestra ancora aperta -> vale la percentuale in cache. Se non e' rinfrescata
+#    resta comunque un limite inferiore attendibile (dentro una finestra la quota
+#    puo' solo salire), ma va marcata vecchia... a meno che dalla cattura non sia
+#    stato consumato NULLA: allora non e' invecchiata, e' ancora esatta. E' il caso
+#    di chi smette semplicemente di usare Claude Code, dove il dato buono va tenuto
+#    com'e' invece di degradare a stima.
+#  · finestra scaduta -> il ciclo e' chiuso e quello nuovo riparte da zero. Se dal
+#    reset non risulta consumato nulla, lo 0% non e' una stima: e' il valore vero.
+#    Cosi' allo scadere dell'orario il widget si azzera da solo, anche a Claude
+#    fermo, senza aspettare la prossima sessione che rinfreschi la cache.
+last_row = rows[-1][0] if rows else None
 
-    # La statusline aggiornata scrive solo da sessioni ammesse, ma una cache
-    # lasciata li' da una versione precedente puo' venire da chiunque: se e'
-    # marcata e non e' ammessa, si scarta. Non marcata = si accetta (formato
-    # vecchio, viene rimpiazzata al primo render).
-    entry = raw.get("entrypoint")
-    if ENTRYPOINTS and entry is not None and entry not in ENTRYPOINTS:
-        raise ValueError("cache scritta da una sessione esclusa")
+# "Fermo dalla cattura": lo si puo' affermare solo se la scansione arriva indietro
+# fino alla cattura stessa. Riguarda le sessioni che questo widget conta (quelle
+# ammesse da ENTRYPOINTS): consumi di un altro entrypoint sullo stesso account
+# non passano di qui e non sono visibili.
+idle_since_cap = (cap_at is not None and cap_at >= scan_from
+                  and (last_row is None or last_row <= cap_at))
 
-    cap = raw.get("captured_at")
-    if cap is not None:
-        cache_age = max(0, int(now.timestamp() - float(cap)))
+fresh = cache_age is not None and (cache_age <= LIVE_TTL or idle_since_cap)
 
-    cached = raw.get("rate_limits") or {}
-    for key, win in (("session", "five_hour"), ("week", "seven_day")):
-        w = cached.get(win) or {}
-        p, r = w.get("used_percentage"), w.get("resets_at")
-        if p is None or r is None or now.timestamp() >= r:
-            continue
-        live[key] = (int(round(float(p))),
-                     dt.datetime.fromtimestamp(r, dt.timezone.utc).astimezone())
-except (OSError, ValueError, AttributeError, TypeError):
-    pass
+live = {}          # key -> (pct, reset, esatto)
+for key, (p, end, span_w) in cached_win.items():
+    if end > now:
+        live[key] = (p, end.astimezone(), fresh)
+        continue
+    start, end = rolled(end, span_w)
+    if last_row is not None and last_row >= start:
+        continue   # consumo dopo il reset e nessuna lettura nuova: si stima
+    # La settimanale sta su una griglia fissa, quindi il prossimo reset e' noto.
+    # La finestra di sessione invece nasce col primo messaggio: a consumo zero non
+    # e' "aperta al 0%", non esiste — niente orario, il widget dira' "idle".
+    live[key] = (0, end.astimezone() if key == "week" else None, True)
 
-# Un dato reale ma non piu' rinfrescato resta un limite inferiore attendibile
-# (dentro una finestra la quota puo' solo salire), pero' va distinto dal live:
-# nel frattempo puo' essere cresciuto per consumi che non passano da questa
-# statusline — p.es. Claude Desktop, o una sessione chiusa da ore.
-fresh = cache_age is not None and cache_age <= LIVE_TTL
-
-# "src": da dove viene la percentuale — "live" quota reale aggiornata, "stale"
-# quota reale ma vecchia, "est" stima locale sui budget configurati.
-src = "live" if fresh else "stale"
+# "src": da dove viene la percentuale — "live" quota reale attuale, "stale" quota
+# reale ma potenzialmente superata, "est" stima locale sui budget configurati.
+def src_of(exact):
+    return "live" if exact else "stale"
 
 sess = {
     "used":   sess_used,
@@ -267,8 +323,9 @@ sess = {
     "live":   False,
 }
 if "session" in live:
-    p, r = live["session"]
-    sess.update(pct=p, reset=clock(r), active=True, src=src, live=fresh)
+    p, r, exact = live["session"]
+    sess.update(pct=p, reset=clock(r), active=r is not None,
+                src=src_of(exact), live=exact)
 
 week = {
     "used":  week_used,
@@ -279,8 +336,8 @@ week = {
     "live":  False,
 }
 if "week" in live:
-    p, r = live["week"]
-    week.update(pct=p, reset=stamp(r), src=src, live=fresh)
+    p, r, exact = live["week"]
+    week.update(pct=p, reset=stamp(r), src=src_of(exact), live=exact)
 
 print(json.dumps({
     "model":  short(last_model),
