@@ -33,7 +33,7 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 | Widget | Shows |
 |---|---|
 | **Clock** | `HH` over `MM` (two‑layer, colour‑inverted) + seconds |
-| **Calendar** | Month grid with today highlighted; `‹ ›` to browse months, double-click a day to open it in Calendar.app |
+| **Calendar** | Month grid with today highlighted and an ISO week-number (`CW`) column; `‹ ›` to browse months, double-click a day to open it in Calendar.app |
 | **Disk / System** | Ring gauges for CPU, RAM, disk + legend with CPU %, free RAM and free disk |
 | **Weather** | OpenWeatherMap current conditions with a Feather glyph icon |
 | **Network** | Wi‑Fi name + down/up speed with bar sparklines |
@@ -162,6 +162,11 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 - **Calendar** — sits under the clock, aligned to its column. The week starts on Monday; set
   `WEEK_START = 0` in `afterRender:` (`cosmoduck-cal.widget/index.coffee`) for a Sunday-first
   grid. The month always draws six rows, so the card never changes height.
+
+  The `CW` column carries **ISO 8601** week numbers. Each row is numbered after its own Thursday,
+  which is what fixes an ISO week's number and year — so the count stays right across a year
+  boundary, and under `WEEK_START = 0`, where a row opens on a Sunday that still belongs to the
+  week before.
 
   `‹` and `›` browse months (the grid keeps whatever month you left it on — the minute refresh
   does not snap it back); while you are away from the current month the date on the right turns

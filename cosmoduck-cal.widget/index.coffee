@@ -120,7 +120,7 @@ style: """
 
   .grid
     display: grid
-    grid-template-columns: repeat(7, 1fr)
+    grid-template-columns: 19px repeat(7, 1fr)
     row-gap: 1px
 
   .dow
@@ -132,6 +132,19 @@ style: """
     padding-bottom: 4px
     border-bottom: 1px solid rgba(93,173,226,0.14)
     margin-bottom: 3px
+
+  .cw
+    height: 20px
+    line-height: 20px
+    text-align: center
+    font-size: 9px
+    color: #AED6F1
+    opacity: 0.3
+    border-right: 1px solid rgba(93,173,226,0.12)
+  .dow.cw
+    height: auto
+    line-height: normal
+    opacity: 0.3
 
   .cell
     height: 20px
@@ -206,6 +219,17 @@ afterRender: (domEl) ->
 
   pad = (n) -> if n < 10 then "0#{n}" else "#{n}"
 
+  # Settimana ISO 8601: a decidere numero e anno della settimana e' il suo
+  # giovedi', non il giorno che si guarda. Ci si sposta li' e si contano i
+  # sette-giorni dal giovedi' della settimana 1, che e' quella del 4 gennaio.
+  # Round e non floor: due cambi d'ora legale in mezzo sfalsano di un'ora.
+  isoWeek = (date) ->
+    thu = new Date(date.getFullYear(), date.getMonth(), date.getDate())
+    thu.setDate(thu.getDate() + 3 - ((thu.getDay() + 6) % 7))
+    first = new Date(thu.getFullYear(), 0, 4)
+    first.setDate(first.getDate() + 3 - ((first.getDay() + 6) % 7))
+    1 + Math.round((thu - first) / 604800000)
+
   draw = (force) ->
     day = domEl.dataset.day
     return unless day
@@ -220,7 +244,8 @@ afterRender: (domEl) ->
     lead  = (view.getDay() - WEEK_START + 7) % 7
     inMon = new Date(vy, vm + 1, 0).getDate()
 
-    head = ("<div class='dow'>#{DOW[(WEEK_START + i) % 7]}</div>" for i in [0...7])
+    head = ["<div class='dow cw'>CW</div>"]
+    head.push "<div class='dow'>#{DOW[(WEEK_START + i) % 7]}</div>" for i in [0...7]
 
     # Sempre 6 righe: l'altezza della card non deve ballare da un mese all'altro.
     # I numeri fuori mese li normalizza Date: 0 = ultimo giorno del mese prima.
@@ -232,7 +257,15 @@ afterRender: (domEl) ->
       cls.push 'out' if n < 1 or n > inMon
       cls.push 'today' if cell.getFullYear() == y and cell.getMonth() == m - 1 and cell.getDate() == d
       iso = "#{cell.getFullYear()}-#{pad(cell.getMonth() + 1)}-#{pad(cell.getDate())}"
-      "<div class='#{cls.join(' ')}' data-date='#{iso}'>#{cell.getDate()}</div>"
+      # La riga porta il numero della settimana del proprio giovedi': cosi' il
+      # conto resta giusto anche con WEEK_START = 0, dove la riga si apre di
+      # domenica e la domenica appartiene ancora alla settimana ISO precedente.
+      week = if i % 7 == 0
+        thu = new Date(vy, vm, n + ((4 - WEEK_START + 7) % 7))
+        "<div class='cw'>#{isoWeek(thu)}</div>"
+      else
+        ''
+      week + "<div class='#{cls.join(' ')}' data-date='#{iso}'>#{cell.getDate()}</div>"
 
     $(domEl).find('#month').text("#{MONTHS[vm]} #{vy}")
     $(domEl).find('#today')
