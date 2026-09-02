@@ -177,17 +177,16 @@ afterRender: (domEl) ->
   savedTop = localStorage.getItem("#{P}_pos_top2")
   savedLeft = localStorage.getItem("#{P}_pos_left2")
   if savedTop and savedLeft
-    # La posizione salvata puo' venire da uno schermo piu' grande (o da un
-    # trascinamento finito oltre il bordo). Se cade fuori dall'area visibile la
-    # buttiamo via e torniamo al posto di default dello style: bloccato e fuori
-    # schermo il widget non si recupera piu' col mouse.
-    w = domEl.offsetWidth  or 216
-    h = domEl.offsetHeight or 190
-    top  = parseInt(savedTop, 10)
-    left = parseInt(savedLeft, 10)
-    onScreen = not isNaN(top) and not isNaN(left) and
-               top >= 0 and left >= 0 and
-               top + h <= window.innerHeight and left + w <= window.innerWidth
+    # La posizione salvata puo' venire da uno schermo piu' grande, o da un
+    # trascinamento finito oltre il bordo. Se la card non ci sta tutta nel
+    # viewport corrente buttiamo via le chiavi e torniamo al posto di default
+    # dello style: bloccata e fuori schermo non la si recupera piu' col mouse.
+    posT = parseInt(savedTop, 10)
+    posL = parseInt(savedLeft, 10)
+    onScreen = not isNaN(posT) and not isNaN(posL) and
+               posT >= 0 and posL >= 0 and
+               posT + domEl.offsetHeight <= window.innerHeight and
+               posL + domEl.offsetWidth <= window.innerWidth
     if onScreen
       domEl.style.top = savedTop
       domEl.style.left = savedLeft

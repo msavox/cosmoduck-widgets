@@ -100,8 +100,22 @@ afterRender: (domEl) ->
   savedTop = localStorage.getItem("#{P}_pos_top2")
   savedLeft = localStorage.getItem("#{P}_pos_left2")
   if savedTop and savedLeft
-    domEl.style.top = savedTop
-    domEl.style.left = savedLeft
+    # La posizione salvata puo' venire da uno schermo piu' grande, o da un
+    # trascinamento finito oltre il bordo. Se la card non ci sta tutta nel
+    # viewport corrente buttiamo via le chiavi e torniamo al posto di default
+    # dello style: bloccata e fuori schermo non la si recupera piu' col mouse.
+    posT = parseInt(savedTop, 10)
+    posL = parseInt(savedLeft, 10)
+    onScreen = not isNaN(posT) and not isNaN(posL) and
+               posT >= 0 and posL >= 0 and
+               posT + domEl.offsetHeight <= window.innerHeight and
+               posL + domEl.offsetWidth <= window.innerWidth
+    if onScreen
+      domEl.style.top = savedTop
+      domEl.style.left = savedLeft
+    else
+      localStorage.removeItem("#{P}_pos_top2")
+      localStorage.removeItem("#{P}_pos_left2")
 
   updateLockUI = ->
     $(domEl).toggleClass('locked', isLocked)
