@@ -177,8 +177,23 @@ afterRender: (domEl) ->
   savedTop = localStorage.getItem("#{P}_pos_top2")
   savedLeft = localStorage.getItem("#{P}_pos_left2")
   if savedTop and savedLeft
-    domEl.style.top = savedTop
-    domEl.style.left = savedLeft
+    # La posizione salvata puo' venire da uno schermo piu' grande (o da un
+    # trascinamento finito oltre il bordo). Se cade fuori dall'area visibile la
+    # buttiamo via e torniamo al posto di default dello style: bloccato e fuori
+    # schermo il widget non si recupera piu' col mouse.
+    w = domEl.offsetWidth  or 216
+    h = domEl.offsetHeight or 190
+    top  = parseInt(savedTop, 10)
+    left = parseInt(savedLeft, 10)
+    onScreen = not isNaN(top) and not isNaN(left) and
+               top >= 0 and left >= 0 and
+               top + h <= window.innerHeight and left + w <= window.innerWidth
+    if onScreen
+      domEl.style.top = savedTop
+      domEl.style.left = savedLeft
+    else
+      localStorage.removeItem("#{P}_pos_top2")
+      localStorage.removeItem("#{P}_pos_left2")
 
   # ── calendario ───────────────────────────────────────────────────────────────
   # Primo giorno della settimana: 1 = lunedi', 0 = domenica.
