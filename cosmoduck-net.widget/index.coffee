@@ -11,13 +11,13 @@ style: """
   height: 140px
   box-sizing: border-box
   overflow: hidden
-  color: #C8D9E8
+  color: var(--cd-text, #C8D9E8)
   font-family: 'CDAbel', -apple-system, sans-serif
-  background: rgba(16,24,34,0.55)
+  background: var(--cd-glass, rgba(16,24,34,0.55))
   -webkit-backdrop-filter: blur(12px) saturate(1.2)
   backdrop-filter: blur(12px) saturate(1.2)
   border-radius: 22px
-  border: 1px solid rgba(93,173,226,0.22)
+  border: 1px solid var(--cd-border, rgba(93,173,226,0.22))
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07)
   padding: 14px 0 0 18px
   user-select: none
@@ -31,7 +31,7 @@ style: """
     position: absolute
     top: 10px
     right: 9px
-    color: #AED6F1
+    color: var(--cd-bright, #AED6F1)
     width: 15px
     height: 15px
     opacity: 0
@@ -67,7 +67,7 @@ style: """
   .ssid
     font-size: 13px
     font-weight: 700
-    color: #5DADE2
+    color: var(--cd-accent, #5DADE2)
   .ssid .i
     font-family: 'CDFeather'
     font-weight: 400
@@ -183,8 +183,8 @@ update: (output, domEl) ->
     max = Math.max.apply(null, arr.concat([1]))
     bars = arr.map((v, i) ->
       bh = Math.max(0, Math.min(h, (v / max) * h))
-      "<rect x='#{(i*bw).toFixed(1)}' y='#{(h-bh).toFixed(1)}' width='#{(bw*0.8).toFixed(1)}' height='#{bh.toFixed(1)}' fill='#AED6F1'></rect>"
+      "<rect x='#{(i*bw).toFixed(1)}' y='#{(h-bh).toFixed(1)}' width='#{(bw*0.8).toFixed(1)}' height='#{bh.toFixed(1)}' style='fill:var(--cd-bright, #AED6F1)'></rect>"
     ).join('')
-    "<svg width='#{w}' height='#{h}' style='display:block'><rect width='#{w}' height='#{h}' fill='#1F3A5F' fill-opacity='0.35'></rect>#{bars}</svg>"
+    "<svg width='#{w}' height='#{h}' style='display:block'><rect width='#{w}' height='#{h}' style='fill:var(--cd-shadow, #1F3A5F)' fill-opacity='0.35'></rect>#{bars}</svg>"
   domEl.querySelector('#dspark').innerHTML = spark(dh)
   domEl.querySelector('#uspark').innerHTML = spark(uh)

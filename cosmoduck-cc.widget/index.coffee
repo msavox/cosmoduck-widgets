@@ -12,13 +12,13 @@ style: """
   height: 140px
   box-sizing: border-box
   overflow: hidden
-  color: #C8D9E8
+  color: var(--cd-text, #C8D9E8)
   font-family: 'CDAbel', -apple-system, sans-serif
-  background: rgba(16,24,34,0.55)
+  background: var(--cd-glass, rgba(16,24,34,0.55))
   -webkit-backdrop-filter: blur(12px) saturate(1.2)
   backdrop-filter: blur(12px) saturate(1.2)
   border-radius: 22px
-  border: 1px solid rgba(93,173,226,0.22)
+  border: 1px solid var(--cd-border, rgba(93,173,226,0.22))
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07)
   padding: 13px 16px 0 18px
   user-select: none
@@ -32,7 +32,7 @@ style: """
     position: absolute
     top: 10px
     right: 9px
-    color: #AED6F1
+    color: var(--cd-bright, #AED6F1)
     width: 15px
     height: 15px
     opacity: 0
@@ -70,7 +70,7 @@ style: """
     align-items: center
     font-size: 13px
     font-weight: 700
-    color: #5DADE2
+    color: var(--cd-accent, #5DADE2)
     margin-bottom: 7px
   .hdr svg
     width: 10px
@@ -88,7 +88,7 @@ style: """
     font-weight: 400
     letter-spacing: 0.3px
     text-transform: uppercase
-    color: #AED6F1
+    color: var(--cd-bright, #AED6F1)
     opacity: 0.6
 
   .grp
@@ -102,11 +102,11 @@ style: """
     font-size: 11px
     line-height: 1.15
   .row .k
-    color: #C8D9E8
+    color: var(--cd-text, #C8D9E8)
     opacity: 0.9
   .row .p
     font-weight: 700
-    color: #5DADE2
+    color: var(--cd-accent, #5DADE2)
   .sub
     font-size: 9px
     opacity: 0.62
@@ -120,13 +120,13 @@ style: """
     font-size: 10px
     margin-top: 7px
     padding-top: 5px
-    border-top: 1px solid rgba(93,173,226,0.14)
+    border-top: 1px solid var(--cd-rule, rgba(93,173,226,0.14))
   .last-hour .k
     opacity: 0.62
     font-size: 9px
     letter-spacing: 0.4px
   .last-hour .v
-    color: #85C1E9
+    color: var(--cd-mid, #85C1E9)
   .last-hour .age
     margin-left: 4px
     font-size: 8px
@@ -136,14 +136,14 @@ style: """
   .bar
     height: 6px
     border-radius: 3px
-    background: rgba(31,58,95,0.55)
+    background: var(--cd-track, rgba(31,58,95,0.55))
     overflow: hidden
     margin: 2px 0
   .bar .fill
     height: 100%
     width: 0%
     border-radius: 3px
-    background: #5DADE2
+    background: var(--cd-accent, #5DADE2)
     transition: width 0.45s ease, background 0.45s ease
 """
 
@@ -256,7 +256,7 @@ update: (output, domEl) ->
   tone = (p) ->
     return '#EC7063' if p >= 92
     return '#E59866' if p >= 80
-    '#5DADE2'
+    'var(--cd-accent, #5DADE2)'
 
   fill = (id, pct) ->
     p = Math.max(0, Math.min(100, pct or 0))
@@ -303,9 +303,9 @@ update: (output, domEl) ->
   else 'est'
 
   [txt, col] = switch state
-    when 'live'  then ['', '#C8D9E8']
+    when 'live'  then ['', 'var(--cd-text, #C8D9E8)']
     when 'stale' then ["~#{ago(d.age)}", '#E59866']
-    else ['~stima', '#C8D9E8']
+    else ['~stima', 'var(--cd-text, #C8D9E8)']
 
   $(domEl).find('#age').text(txt).css(color: col)
 

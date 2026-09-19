@@ -9,6 +9,7 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 
 ## Features
 - **Frosted glass** — translucent tinted panels with `backdrop-filter` blur, thin blue border and inner highlight. The blur picks up your wallpaper.
+- **Accent from the wallpaper** — an invisible theme widget reads the wallpaper in use, pulls its dominant hue out and recolours the whole set to match. Remove the widget and everything falls back to the original blue.
 - **Draggable & lockable** — click‑drag any widget to reposition; each has a small monochrome lock icon (shown on hover) to freeze it. Positions and lock state persist across reboots and refreshes (via `localStorage`).
 - **Real sensors on Apple Silicon** — CPU/GPU die temperature and power draw via [`macmon`](https://github.com/vladkens/macmon) (no `sudo`).
 - **Two‑layer clock** — large Bebas Neue digits with the original Cosmoduck colour‑inversion between hours and minutes.
@@ -40,8 +41,41 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 | **Processes** | Top 3 CPU and top 3 RAM processes |
 | **Hardware Monitor** | CPU/GPU temperature + CPU/GPU/System power (via macmon) |
 | **Claude Code** | Model + reasoning effort in use, real session (5h) and weekly rate-limit usage with % fill bars and next reset time |
+| **Theme** | Nothing — invisible. Derives the accent palette from the wallpaper and publishes it to all the others |
 
 ## Configuration
+- **Accent from the wallpaper** — `cosmoduck-theme.widget` draws nothing. Every 30 s it finds the
+  wallpaper in use, samples it, and publishes a palette as CSS variables (`--cd-accent`,
+  `--cd-bright`, `--cd-mid`, `--cd-deep`, `--cd-shadow`, `--cd-text`, `--cd-ink`, `--cd-glass` and
+  the translucent `--cd-border` / `--cd-fill` / `--cd-rule` / `--cd-track`). Übersicht puts every
+  widget in one document per screen, so the variables reach all of them at once.
+
+  Every colour in the other widgets is written `var(--cd-x, <original colour>)`. **Delete the
+  theme widget and the set goes back to the Cosmoduck blue** — nothing else has to change.
+
+  Only the *hue* comes from the wallpaper. Lightness stays where it was, because that is what
+  decides whether text reads on the dark glass, and a photo does not get a vote on it. Saturation
+  scales with the wallpaper's own, between a floor and a ceiling: a washed-out picture gives a
+  quieter theme, a vivid one a livelier theme, neither an illegible one. Tune it at the top of
+  `cosmoduck-theme.widget/scripts/collect.sh`:
+
+  | Variable | Default | Meaning |
+  |---|---|---|
+  | `BLEND` | `1.0` | how much the wallpaper decides. `1` adopts its hue outright, `0.3` nudges the Cosmoduck blue a few dozen degrees, `0` leaves the original theme untouched |
+  | `SAT_FLOOR` | `0.75` | saturation floor, as a fraction of the original. Without it a grey wallpaper produces grey widgets |
+
+  Both also read from the environment as `COSMODUCK_THEME_BLEND` and `COSMODUCK_THEME_SAT_FLOOR`.
+
+  The wallpaper is read from macOS's own registry
+  (`~/Library/Application Support/com.apple.wallpaper/Store/Index.plist`), which needs **no
+  permission**. Only if that fails does it ask System Events, and *that* raises the usual
+  *"Übersicht wants to control System Events"* prompt. Decoding the picture costs about half a
+  second, so the result is cached in `~/.cache/cosmoduck/` and recomputed only when the wallpaper,
+  its mtime or the tuning changes.
+
+  Two known limits: the wallpaper can differ per display and per Space, while the palette is one
+  per screen — the most recently set wallpaper wins; and the widgets pick up a change at the next
+  30 s refresh, not the instant you set it.
 - **Weather** — needs a free [OpenWeatherMap](https://openweathermap.org/api) key. Keep it out of
   the repo, in `~/.config/cosmoduck/weather.env`:
 

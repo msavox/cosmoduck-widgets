@@ -12,12 +12,12 @@ style: """
   box-sizing: border-box
   overflow: hidden
   font-family: 'CDAbel', -apple-system, sans-serif
-  color: #C8D9E8
-  background: url('cosmoduck-disk.widget/icons.png') no-repeat top left / 140px 140px, rgba(16,24,34,0.55)
+  color: var(--cd-text, #C8D9E8)
+  background: url('cosmoduck-disk.widget/icons.png') no-repeat top left / 140px 140px, var(--cd-glass, rgba(16,24,34,0.55))
   -webkit-backdrop-filter: blur(12px) saturate(1.2)
   backdrop-filter: blur(12px) saturate(1.2)
   border-radius: 22px
-  border: 1px solid rgba(93,173,226,0.22)
+  border: 1px solid var(--cd-border, rgba(93,173,226,0.22))
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07)
   user-select: none
   pointer-events: auto
@@ -30,7 +30,7 @@ style: """
     position: absolute
     top: 10px
     right: 9px
-    color: #AED6F1
+    color: var(--cd-bright, #AED6F1)
     width: 15px
     height: 15px
     opacity: 0
@@ -90,24 +90,35 @@ style: """
     width: 30px
     margin-right: -2px
     flex: 0 0 auto
-    color: #C8D9E8
+    color: var(--cd-text, #C8D9E8)
     opacity: 0.9
   .txt .r .v
-    color: #5DADE2
+    color: var(--cd-accent, #5DADE2)
+
+  # Il colore degli anelli vive qui e non nell'attributo stroke= perche' un
+  # attributo di presentazione SVG non risolve var().
+  .r-cpu
+    stroke: var(--cd-accent, #5DADE2)
+  .r-mem
+    stroke: var(--cd-mid, #85C1E9)
+  .r-root
+    stroke: var(--cd-deep, #2874A6)
+  .r-data
+    stroke: var(--cd-bright, #AED6F1)
 """
 
 render: -> """
   <style>@font-face{font-family:'CDAbel';src:url('cosmoduck-disk.widget/fonts/Abel-Regular.ttf') format('truetype');}</style>
   <div class="lock-btn" id="lock-toggle"></div>
   <svg class="rings" width="150" height="140" viewBox="0 0 150 140">
-    <circle class="bg" cx="39.5" cy="39" r="22" stroke="#5DADE2"></circle>
-    <circle class="fg" id="cpu-fg" cx="39.5" cy="39" r="22" stroke="#5DADE2" stroke-dasharray="0 138.23" transform="rotate(-90 39.5 39)"></circle>
-    <circle class="bg" cx="99.4" cy="39" r="22" stroke="#85C1E9"></circle>
-    <circle class="fg" id="mem-fg" cx="99.4" cy="39" r="22" stroke="#85C1E9" stroke-dasharray="0 138.23" transform="rotate(-90 99.4 39)"></circle>
-    <circle class="bg" cx="41" cy="103" r="22" stroke="#2874A6"></circle>
-    <circle class="fg" id="root-fg" cx="41" cy="103" r="22" stroke="#2874A6" stroke-dasharray="0 138.23" transform="rotate(-90 41 103)"></circle>
-    <circle class="bg" cx="41" cy="103" r="13" stroke="#AED6F1"></circle>
-    <circle class="fg" id="data-fg" cx="41" cy="103" r="13" stroke="#AED6F1" stroke-dasharray="0 81.68" transform="rotate(-90 41 103)"></circle>
+    <circle class="bg r-cpu" cx="39.5" cy="39" r="22"></circle>
+    <circle class="fg r-cpu" id="cpu-fg" cx="39.5" cy="39" r="22" stroke-dasharray="0 138.23" transform="rotate(-90 39.5 39)"></circle>
+    <circle class="bg r-mem" cx="99.4" cy="39" r="22"></circle>
+    <circle class="fg r-mem" id="mem-fg" cx="99.4" cy="39" r="22" stroke-dasharray="0 138.23" transform="rotate(-90 99.4 39)"></circle>
+    <circle class="bg r-root" cx="41" cy="103" r="22"></circle>
+    <circle class="fg r-root" id="root-fg" cx="41" cy="103" r="22" stroke-dasharray="0 138.23" transform="rotate(-90 41 103)"></circle>
+    <circle class="bg r-data" cx="41" cy="103" r="13"></circle>
+    <circle class="fg r-data" id="data-fg" cx="41" cy="103" r="13" stroke-dasharray="0 81.68" transform="rotate(-90 41 103)"></circle>
   </svg>
   <div class="txt">
     <div class="r"><span class="k">CPU</span><span class="v" id="v-cpu">--%</span></div>

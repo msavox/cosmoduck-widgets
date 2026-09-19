@@ -17,13 +17,13 @@ style: """
   height: 190px
   box-sizing: border-box
   overflow: hidden
-  color: #C8D9E8
+  color: var(--cd-text, #C8D9E8)
   font-family: 'CDAbel', -apple-system, sans-serif
-  background: rgba(16,24,34,0.55)
+  background: var(--cd-glass, rgba(16,24,34,0.55))
   -webkit-backdrop-filter: blur(12px) saturate(1.2)
   backdrop-filter: blur(12px) saturate(1.2)
   border-radius: 22px
-  border: 1px solid rgba(93,173,226,0.22)
+  border: 1px solid var(--cd-border, rgba(93,173,226,0.22))
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07)
   padding: 13px 14px 0 14px
   user-select: none
@@ -37,7 +37,7 @@ style: """
     position: absolute
     top: 10px
     right: 9px
-    color: #AED6F1
+    color: var(--cd-bright, #AED6F1)
     width: 15px
     height: 15px
     opacity: 0
@@ -75,7 +75,7 @@ style: """
     align-items: center
     font-size: 13px
     font-weight: 700
-    color: #5DADE2
+    color: var(--cd-accent, #5DADE2)
     margin-bottom: 8px
     padding-right: 15px
   .hdr svg
@@ -94,7 +94,7 @@ style: """
     font-size: 9px
     font-weight: 400
     letter-spacing: 0.4px
-    color: #AED6F1
+    color: var(--cd-bright, #AED6F1)
     opacity: 0.6
     border-radius: 4px
   .hdr .nav
@@ -103,20 +103,20 @@ style: """
     text-align: center
     font-size: 15px
     line-height: 15px
-    color: #AED6F1
+    color: var(--cd-bright, #AED6F1)
     opacity: 0.45
     border-radius: 4px
     cursor: pointer
     transition: opacity 0.15s, background 0.15s
   .hdr .nav:hover
     opacity: 1
-    background: rgba(93,173,226,0.18)
+    background: var(--cd-fill, rgba(93,173,226,0.18))
   .hdr .td.btn
     cursor: pointer
     opacity: 0.85
   .hdr .td.btn:hover
     opacity: 1
-    background: rgba(93,173,226,0.18)
+    background: var(--cd-fill, rgba(93,173,226,0.18))
 
   .grid
     display: grid
@@ -127,10 +127,10 @@ style: """
     font-size: 8px
     letter-spacing: 0.4px
     text-align: center
-    color: #AED6F1
+    color: var(--cd-bright, #AED6F1)
     opacity: 0.5
     padding-bottom: 4px
-    border-bottom: 1px solid rgba(93,173,226,0.14)
+    border-bottom: 1px solid var(--cd-rule, rgba(93,173,226,0.14))
     margin-bottom: 3px
 
   .cw
@@ -138,9 +138,9 @@ style: """
     line-height: 20px
     text-align: center
     font-size: 9px
-    color: #AED6F1
+    color: var(--cd-bright, #AED6F1)
     opacity: 0.3
-    border-right: 1px solid rgba(93,173,226,0.12)
+    border-right: 1px solid var(--cd-rule-faint, rgba(93,173,226,0.12))
   .dow.cw
     height: auto
     line-height: normal
@@ -155,17 +155,17 @@ style: """
     cursor: pointer
     transition: background 0.15s
   .cell.we
-    color: #85C1E9
+    color: var(--cd-mid, #85C1E9)
   .cell.out
     opacity: 0.22
   .cell:hover
-    background: rgba(93,173,226,0.18)
+    background: var(--cd-fill, rgba(93,173,226,0.18))
   .cell.today
-    background: #5DADE2
-    color: #0F1722
+    background: var(--cd-accent, #5DADE2)
+    color: var(--cd-ink, #0F1722)
     font-weight: 700
   .cell.today:hover
-    background: #85C1E9
+    background: var(--cd-mid, #85C1E9)
 """
 
 render: -> """
