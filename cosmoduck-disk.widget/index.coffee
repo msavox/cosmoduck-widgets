@@ -95,8 +95,10 @@ style: """
   .txt .r .v
     color: var(--cd-accent, #5DADE2)
 
-  # Il colore degli anelli vive qui e non nell'attributo stroke= perche' un
-  # attributo di presentazione SVG non risolve var().
+  // Il colore degli anelli vive qui e non nell'attributo stroke= perche' un
+  // attributo di presentazione SVG non risolve var(). NB: qui dentro e' Stylus,
+  // dove il commento e' //: un '#' diventerebbe un selettore, e basta un
+  // selettore invalido nel gruppo perche' il browser butti tutta la regola.
   .r-cpu
     stroke: var(--cd-accent, #5DADE2)
   .r-mem
