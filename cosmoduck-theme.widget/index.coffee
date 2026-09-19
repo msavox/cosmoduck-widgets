@@ -9,6 +9,9 @@
 # questo widget non c'e', fallisce o lo togli dalla cartella, il set torna da
 # solo al blu Cosmoduck di sempre. La taratura (quanto il wallpaper detta il
 # colore) sta in cima a scripts/collect.sh.
+#
+# Lo script di estrazione e' scripts/palette.jxa: l'estensione non e' .js
+# perche' Ubersicht caricherebbe quel file come se fosse un widget.
 
 command: "bash cosmoduck-theme.widget/scripts/collect.sh"
 refreshFrequency: 30000

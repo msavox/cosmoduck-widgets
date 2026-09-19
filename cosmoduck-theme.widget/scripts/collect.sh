@@ -14,10 +14,22 @@ BLEND=${COSMODUCK_THEME_BLEND:-1.0}
 SAT_FLOOR=${COSMODUCK_THEME_SAT_FLOOR:-0.75}
 # ───────────────────────────────────────────────────────────────────────────────
 
+# NB: lo script JXA si chiama .jxa, non .js, e non e' un vezzo. Ubersicht
+# carica come widget ogni .js/.jsx/.coffee che trovi sotto la sua cartella
+# (server.js: /\.coffee$|\.js$|\.jsx$/), quindi un palette.js finirebbe nel
+# parser dei widget e comparirebbe a schermo come errore di sintassi.
 DIR=$(cd "$(dirname "$0")" && pwd)
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/cosmoduck"
 CACHE="$CACHE_DIR/theme.json"
 CACHE_KEY="$CACHE_DIR/theme.key"
+LOG="$CACHE_DIR/theme.log"
+mkdir -p "$CACHE_DIR" 2>/dev/null
+
+# Ubersicht considera in errore un widget il cui comando scriva un solo byte su
+# stderr. Qui stderr deve restare vuoto in ogni caso, quindi i guai si
+# raccontano nel log e si esce comunque con 0.
+note() { printf '%s  %s\n' "$(date '+%F %T')" "$*" >> "$LOG" 2>/dev/null; }
+give_up() { note "$*"; exit 0; }
 
 # Il wallpaper dal registro di macOS: nessun permesso da concedere, a differenza
 # di System Events. Le voci sono una per display e per spazio, molte storiche,
@@ -36,7 +48,7 @@ wallpaper_from_store() {
     conf && /<\/data>/          { conf=0; next }
     conf                        { gsub(/[ \t<>]/,""); if ($0 != "data") b = b $0 }
   ' | sort -r | head -1 | cut -f2 | base64 -d 2>/dev/null \
-    | strings -n 8 | grep -o 'file:///[^"]*' | head -1
+    | tr -cs '[:print:]' '\n' | grep -o 'file:///[^"]*' | head -1
 }
 
 # Ripiego: chiede al Finder. Esatto, ma la prima volta fa comparire il prompt
@@ -47,15 +59,18 @@ wallpaper_from_applescript() {
 
 urldecode() { local s="${1//+/ }"; printf '%b' "${s//%/\\x}"; }
 
-SRC=$(wallpaper_from_store)
+SRC=$(wallpaper_from_store 2>>"$LOG")
 [ -z "$SRC" ] && SRC=$(wallpaper_from_applescript)
-[ -z "$SRC" ] && exit 0
+[ -z "$SRC" ] && give_up "wallpaper non trovato: ne' nel registro di macOS ne' via System Events"
 
 case "$SRC" in
   file://*) FILE=$(urldecode "${SRC#file://}") ;;
   *)        FILE=$SRC ;;
 esac
-[ -r "$FILE" ] || exit 0
+# Se Ubersicht non ha il permesso su questa cartella (Impostazioni di Sistema >
+# Privacy e sicurezza > File e cartelle) il file risulta illeggibile da qui pur
+# esistendo.
+[ -r "$FILE" ] || give_up "wallpaper non leggibile: $FILE (permessi di Ubersicht sulla cartella?)"
 
 # Decodificare il wallpaper costa mezzo secondo e non cambia finche' non cambia
 # lui: si ricalcola solo quando path, mtime o taratura si muovono.
@@ -65,13 +80,11 @@ if [ -r "$CACHE" ] && [ -r "$CACHE_KEY" ] && [ "$(cat "$CACHE_KEY")" = "$KEY" ];
   exit 0
 fi
 
-JSON=$(osascript -l JavaScript "$DIR/palette.js" "$SRC" "$BLEND" "$SAT_FLOOR" 2>/dev/null)
+JSON=$(osascript -l JavaScript "$DIR/palette.jxa" "$SRC" "$BLEND" "$SAT_FLOOR" 2>>"$LOG")
 case "$JSON" in
   \{*\}) ;;
-  *) exit 0 ;;
+  *) give_up "palette.jxa non ha prodotto JSON (vedi le righe qui sopra)" ;;
 esac
-
-mkdir -p "$CACHE_DIR"
 # Temp file per processo: Ubersicht gira il widget su ogni schermo, e due
 # istanze non devono sovrascriversi la cache a meta' scrittura.
 TMP="$CACHE.$$"
