@@ -14,7 +14,7 @@ refreshFrequency: 5000
 style: """
   top: 18px
   left: 400px
-  width: 330px
+  width: 272px
   height: 450px
   box-sizing: border-box
   overflow: hidden
@@ -26,7 +26,7 @@ style: """
   border-radius: 22px
   border: 1px solid var(--cd-border, rgba(93,173,226,0.22))
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07)
-  padding: 12px 18px
+  padding: 12px 14px
   display: flex
   flex-direction: column
   justify-content: center
@@ -95,7 +95,7 @@ style: """
   .wx-now
     display: flex
     align-items: baseline
-    gap: 10px
+    gap: 8px
     margin-bottom: 4px
   .wx-now .ico
     font-family: 'CDFeather'
@@ -115,8 +115,8 @@ style: """
   .wx-now .stats
     margin-left: auto
     display: flex
-    gap: 12px
-    font-size: 10px
+    gap: 10px
+    font-size: 9.5px
     opacity: 0.85
   .wx-now .stats .gly
     font-size: 10px
@@ -125,7 +125,7 @@ style: """
     display: grid
     grid-template-columns: repeat(5, 1fr)
     text-align: center
-    max-width: 210px
+    max-width: 100%
   .fc .d
     font-size: 8px
     opacity: 0.5
@@ -163,12 +163,12 @@ style: """
   .sysrow
     display: flex
     align-items: center
-    gap: 16px
+    gap: 12px
   .rings
     flex: 0 0 auto
   .rings circle
     fill: none
-    stroke-width: 4
+    stroke-width: 3.5
     stroke-linecap: round
   .rings .bg
     opacity: 0.22
@@ -190,11 +190,11 @@ style: """
   .syslegend .r
     display: flex
     align-items: baseline
-    font-size: 12px
+    font-size: 11.5px
     line-height: 1.4
     font-weight: 700
   .syslegend .k
-    width: 70px
+    width: 42px
     flex: 0 0 auto
     opacity: 0.85
   .syslegend .v
@@ -208,14 +208,14 @@ style: """
   .grid2
     display: grid
     grid-template-columns: 1fr 1fr
-    column-gap: 18px
+    column-gap: 12px
   .trow
     display: flex
     align-items: baseline
     gap: 6px
     margin-bottom: 4px
   .trow .k
-    width: 24px
+    width: 22px
     flex: 0 0 auto
     font-size: 9px
     letter-spacing: 0.5px
@@ -237,7 +237,7 @@ style: """
   .trow.hot .bar i
     background: var(--cd-bright, #AED6F1)
   .trow .v
-    width: 44px
+    width: 40px
     flex: 0 0 auto
     text-align: right
     font-size: 10.5px
@@ -260,7 +260,7 @@ style: """
     gap: 8px
     margin-bottom: 2px
   .netrow .k
-    width: 74px
+    width: 66px
     flex: 0 0 auto
     font-size: 10.5px
   .netrow .k .gly
@@ -316,15 +316,15 @@ style: """
   .cc
     display: flex
     align-items: baseline
-    gap: 12px
-    font-size: 10px
+    gap: 10px
+    font-size: 9.5px
   .cc .model
     font-weight: 700
     color: var(--cd-accent, #5DADE2)
   .cc .q
     display: flex
     align-items: baseline
-    gap: 6px
+    gap: 5px
     opacity: 0.9
   .cc .q b
     font-weight: 400
@@ -332,7 +332,7 @@ style: """
     letter-spacing: 1px
     opacity: 0.55
   .cc .mini
-    width: 38px
+    width: 30px
     height: 3px
     border-radius: 2px
     background: var(--cd-track, rgba(31,58,95,0.55))
@@ -368,16 +368,16 @@ render: -> """
   <div class="rule"></div>
   <div class="sec"><span>SYSTEM</span><span class="st" id="a-sysst"></span></div>
   <div class="sysrow">
-    <svg class="rings" width="132" height="46" viewBox="0 0 132 46">
-      <circle class="bg r-cpu"  cx="17" cy="17" r="14"></circle>
-      <circle class="fg r-cpu"  id="a-ring-cpu"  cx="17" cy="17" r="14" stroke-dasharray="0 87.96" transform="rotate(-90 17 17)"></circle>
-      <circle class="bg r-mem"  cx="61" cy="17" r="14"></circle>
-      <circle class="fg r-mem"  id="a-ring-mem"  cx="61" cy="17" r="14" stroke-dasharray="0 87.96" transform="rotate(-90 61 17)"></circle>
-      <circle class="bg r-disk" cx="105" cy="17" r="14"></circle>
-      <circle class="fg r-disk" id="a-ring-disk" cx="105" cy="17" r="14" stroke-dasharray="0 87.96" transform="rotate(-90 105 17)"></circle>
-      <text x="17" y="43">CPU</text>
-      <text x="61" y="43">RAM</text>
-      <text x="105" y="43">DISK</text>
+    <svg class="rings" width="106" height="42" viewBox="0 0 106 42">
+      <circle class="bg r-cpu"  cx="14" cy="15" r="12"></circle>
+      <circle class="fg r-cpu"  id="a-ring-cpu"  cx="14" cy="15" r="12" stroke-dasharray="0 75.40" transform="rotate(-90 14 15)"></circle>
+      <circle class="bg r-mem"  cx="52" cy="15" r="12"></circle>
+      <circle class="fg r-mem"  id="a-ring-mem"  cx="52" cy="15" r="12" stroke-dasharray="0 75.40" transform="rotate(-90 52 15)"></circle>
+      <circle class="bg r-disk" cx="90" cy="15" r="12"></circle>
+      <circle class="fg r-disk" id="a-ring-disk" cx="90" cy="15" r="12" stroke-dasharray="0 75.40" transform="rotate(-90 90 15)"></circle>
+      <text x="14" y="39">CPU</text>
+      <text x="52" y="39">RAM</text>
+      <text x="90" y="39">DISK</text>
     </svg>
     <div class="syslegend">
       <div class="r"><span class="k">LOAD</span><span class="v" id="a-load">--%</span></div>
@@ -425,7 +425,7 @@ render: -> """
   <div class="rule"></div>
   <div class="cc">
     <span class="model" id="a-ccmodel">—</span>
-    <span class="q"><b>SESSION</b><span class="mini"><i id="a-ccsbar"></i></span><span id="a-ccs">--</span></span>
+    <span class="q"><b>SESS</b><span class="mini"><i id="a-ccsbar"></i></span><span id="a-ccs">--</span></span>
     <span class="q"><b>WEEK</b><span class="mini"><i id="a-ccwbar"></i></span><span id="a-ccw">--</span></span>
   </div>
 
@@ -552,7 +552,7 @@ update: (output, domEl) ->
   if sys
     ring = (id, pct) ->
       f = Math.max(0, Math.min(100, pct or 0)) / 100
-      $el.find(id).attr('stroke-dasharray', "#{(f * 87.96).toFixed(2)} 87.96")
+      $el.find(id).attr('stroke-dasharray', "#{(f * 75.40).toFixed(2)} 75.40")
     ring('#a-ring-cpu', sys.cpu)
     ring('#a-ring-mem', sys.mem)
     ring('#a-ring-disk', sys.diskData)
