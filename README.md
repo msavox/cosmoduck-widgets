@@ -24,7 +24,7 @@ Made for a MacBook Air M‑series, tuned on a notch display.
    chmod +x ~/Library/Application\ Support/Übersicht/widgets/cosmoduck-*.widget/scripts/*.sh
    ```
 4. **Enable Interaction** in Übersicht's menu so dragging and the lock buttons work.
-5. **For the Hardware Monitor** (CPU/GPU temp & power), install macmon:
+5. **For the Hardware Monitor's sensors** (CPU/GPU temp & power — the battery half needs nothing), install macmon:
    ```bash
    brew install macmon
    ```
@@ -39,7 +39,7 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 | **Weather** | OpenWeatherMap: current conditions, wind and humidity as glyphs, and the next five days |
 | **Network** | Wi‑Fi name + down/up speed with bar sparklines |
 | **Processes** | Top 3 by CPU and top 3 by memory, each row carrying its own bar |
-| **Hardware Monitor** | CPU/GPU die temperature as gauges, CPU/GPU/System power in watts, and the last two minutes of system draw as a sparkline (via macmon) |
+| **Hardware Monitor** | CPU/GPU die temperature as gauges (via macmon), battery charge with time to empty or to full, CPU/GPU/System power in watts over the last two minutes' trace |
 | **Claude Code** | Model + reasoning effort in use, real session (5h) and weekly rate-limit usage with % fill bars and next reset time |
 | **Theme** | Nothing — invisible. Derives the accent palette from the wallpaper and publishes it to all the others |
 

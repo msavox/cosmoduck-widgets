@@ -19,7 +19,7 @@ style: """
   border-radius: 22px
   border: 1px solid var(--cd-border, rgba(93,173,226,0.22))
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07)
-  padding: 11px 0 11px 20px
+  padding: 8px 0 8px 20px
   display: flex
   flex-direction: column
   justify-content: center
@@ -75,14 +75,14 @@ style: """
     letter-spacing: 1.4px
     color: var(--cd-text, #C8D9E8)
     opacity: 0.45
-    margin: 0 18px 4px 0
+    margin: 0 18px 3px 0
   .sec .st
     letter-spacing: 0.5px
   .trow
     display: flex
     align-items: center
     gap: 7px
-    margin-bottom: 4px
+    margin-bottom: 3px
     padding-right: 18px
   .trow .k
     width: 26px
@@ -113,13 +113,13 @@ style: """
     color: var(--cd-accent, #5DADE2)
   .rule
     height: 1px
-    margin: 1px 18px 5px 0
+    margin: 1px 18px 4px 0
     background: var(--cd-rule, rgba(93,173,226,0.14))
   .pw
+    position: relative
     display: grid
     grid-template-columns: repeat(3, 1fr)
     padding-right: 18px
-    margin-bottom: 2px
   .pw .l
     font-size: 8px
     letter-spacing: 0.7px
@@ -128,17 +128,25 @@ style: """
     font-size: 11px
     line-height: 1.2
     color: var(--cd-mid, #85C1E9)
+  // Il tracciato degli ultimi due minuti sta dietro ai numeri invece di
+  // occupare una fascia propria: la batteria vale piu' di sedici punti di
+  // altezza, e cosi' la traccia resta senza costare niente.
   .spark
-    padding-right: 18px
-    height: 16px
+    position: absolute
+    left: 0
+    right: 18px
+    bottom: -1px
+    height: 22px
+    opacity: 0.3
+    pointer-events: none
   .spark svg
     width: 100%
-    height: 16px
+    height: 22px
     display: block
   .spark polyline
     fill: none
     stroke: var(--cd-accent, #5DADE2)
-    stroke-width: 1.2
+    stroke-width: 1
     stroke-linejoin: round
     stroke-linecap: round
     opacity: 0.85
@@ -154,13 +162,16 @@ render: -> """
   <div class="trow" id="row-cpu"><span class="k">CPU</span><span class="bar"><i id="bar-cpu"></i></span><span class="v" id="hw-cputemp">--</span></div>
   <div class="trow" id="row-gpu"><span class="k">GPU</span><span class="bar"><i id="bar-gpu"></i></span><span class="v" id="hw-gputemp">--</span></div>
   <div class="rule"></div>
+  <div class="sec"><span>BATTERY</span><span class="st" id="hw-battst">--</span></div>
+  <div class="trow" id="row-bat"><span class="k">BAT</span><span class="bar"><i id="bar-bat"></i></span><span class="v" id="hw-battpct">--</span></div>
+  <div class="rule"></div>
   <div class="sec"><span>POWER</span><span class="st">WATT</span></div>
   <div class="pw">
+    <div class="spark" id="hw-spark"></div>
     <div><div class="l">CPU</div><div class="n" id="hw-cpupwr">--</div></div>
     <div><div class="l">GPU</div><div class="n" id="hw-gpupwr">--</div></div>
     <div><div class="l">SYS</div><div class="n" id="hw-syspwr">--</div></div>
   </div>
-  <div class="spark" id="hw-spark"></div>
   <div class="pos-indicator" id="coords">T: 0 L: 0</div>
 """
 
@@ -240,6 +251,25 @@ update: (output, domEl) ->
   fmt = (v, dec) ->
     if v? and not isNaN(v) then (+v).toFixed(dec) else "n/d"
 
+  # La batteria non dipende da macmon, quindi si aggiorna comunque.
+  b = d.batt
+  if b and b.pct?
+    $(domEl).find('#bar-bat').css('width', "#{Math.max(0, Math.min(100, b.pct))}%")
+    $(domEl).find('#hw-battpct').text("#{b.pct}%")
+    # Sotto il 20% la barra passa al tono chiaro, come le temperature sopra gli 80.
+    $(domEl).find('#row-bat').toggleClass('hot', b.pct <= 20 and b.state isnt 'charging')
+    hhmm = if b.mins? then "#{Math.floor(b.mins / 60)}H#{String(b.mins % 60).padStart(2, '0')}" else null
+    status = switch b.state
+      when 'charging'    then (if hhmm then "TO FULL #{hhmm}" else 'CHARGING')
+      when 'discharging' then (if hhmm then "#{hhmm} LEFT" else 'ON BATTERY')
+      when 'charged', 'finishing charge' then 'FULL'
+      else (if b.ac then 'AC' else (hhmm or ''))
+    $(domEl).find('#hw-battst').text(status)
+  else
+    $(domEl).find('#hw-battpct').text('n/d')
+    $(domEl).find('#hw-battst').text('')
+    $(domEl).find('#bar-bat').css('width', '0%')
+
   if d.nomacmon
     $(domEl).find('#hw-state').text('macmon assente')
     $(domEl).find('#hw-cputemp,#hw-gputemp').text('n/d')
@@ -288,10 +318,7 @@ update: (output, domEl) ->
     x = (i + HISTORY_MAX - hist.length) * step
     y = H - 1 - (v / top) * (H - 2)
     "#{x.toFixed(1)},#{y.toFixed(1)}").join(' ')
-  first = pts.split(' ')[0].split(',')[0]
-  last = pts.split(' ')[hist.length - 1].split(',')[0]
   svg = """<svg viewBox="0 0 #{W} #{H}" preserveAspectRatio="none">
-      <polygon points="#{first},#{H} #{pts} #{last},#{H}"></polygon>
       <polyline points="#{pts}"></polyline>
     </svg>"""
   $(domEl).find('#hw-spark').html(svg)
