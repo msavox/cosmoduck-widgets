@@ -28,13 +28,19 @@ var SRC       = ARGV[0] || null;
 var BLEND     = parseFloat(ARGV[1]); if (isNaN(BLEND))     BLEND = 1.0;
 var SAT_FLOOR = parseFloat(ARGV[2]); if (isNaN(SAT_FLOOR)) SAT_FLOOR = 0.75;
 var VIVIDNESS = parseFloat(ARGV[3]); if (isNaN(VIVIDNESS)) VIVIDNESS = 1.5;
+var TWO_TONE  = (ARGV[4] || '1') !== '0';
 
 var BASE_HUE   = 204;        // la tinta Cosmoduck, usata come ancora e ripiego
 var CHROMA_REF = 0.085;      // croma Oklab che vale "scala 1.0": la mediana di
                              // un campione di 476 wallpaper, cosi' la foto
                              // tipica riproduce la saturazione originale
 var SAT_CAP    = 1.15;       // quanto puo' spingere un wallpaper molto acceso
+var GREY_SAT   = 0.08;       // saturazione, in frazione dell'originale, quando
+                             // il wallpaper non ha colore: un bianco e nero
+                             // merita un tema in grigi, non un blu inventato
 var SIDE       = 96;         // lato del bitmap su cui si misura
+var SIDE_HI    = 256;        // e quello per rileggere le macchie di un
+                             // wallpaper piatto, dove 96 non basta
 
 // ruolo: [saturazione, luminosita', scarto di tinta] — misurati sui colori
 // hardcoded originali, che non sono su una tinta sola: i tre toni scuri stanno
@@ -193,38 +199,43 @@ var KERNEL = [1, 2, 3, 2, 1];          // lisciatura circolare, +-10 gradi
 
 function circMeanDeg(x, y) { var d = Math.atan2(y, x) * 180 / Math.PI; return (d % 360 + 360) % 360; }
 function arcDist(a, b) { var d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; }
-function percentile(sorted, q) {
-  if (!sorted.length) return 0;
-  var i = (sorted.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i);
-  return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
+function percentile(pairs, q) {        // pairs: [[valore, peso], ...] gia' ordinate
+  var tot = 0, i;
+  for (i = 0; i < pairs.length; i++) tot += pairs[i][1];
+  if (!tot) return 0;
+  var target = tot * q, acc = 0;
+  for (i = 0; i < pairs.length; i++) {
+    acc += pairs[i][1];
+    if (acc >= target) return pairs[i][0];
+  }
+  return pairs[pairs.length - 1][0];
 }
 
-// Ritorna { hue, chroma } in Oklab, oppure null se il wallpaper non ha colore
-// da dare (bianco e nero, o una velatura cosi' tenue che amplificarla vorrebbe
-// dire inventarsela: e' il caso in cui il vecchio istogramma pescava tinte a
-// caso dal rumore di compressione).
-function dominantAccent(px, W, H, vividness) {
-  var L_MIN = 0.12, L_MAX = 0.97, C_MIN = 0.025;
+// Raccoglie l'istogramma delle tinte sopra una soglia di croma, piu' R: la
+// lunghezza del risultante circolare, cioe' quanto le tinte dell'immagine
+// concordano fra loro. R vicino a 1 vuol dire che tutti i pixel colorati
+// puntano nella stessa direzione; R basso, che sono sparpagliati.
+function collect(px, W, H, cmin) {
+  var L_MIN = 0.12, L_MAX = 0.97;
   var mass = new Array(BINS).fill(0), sx = new Array(BINS).fill(0), sy = new Array(BINS).fill(0);
-  var hues = [], chromas = [], total = 0, seen = 0, kept = 0;
-
+  var hues = [], chromas = [], total = 0, kept = 0, seen = 0, gx = 0, gy = 0;
   for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
     var p = (y * W + x) * 3, lab = oklab(px[p], px[p+1], px[p+2]);
     seen++;
     var C = Math.sqrt(lab[1]*lab[1] + lab[2]*lab[2]);
-    if (lab[0] < L_MIN || lab[0] > L_MAX || C < C_MIN) continue;   // nero, bianco, grigio
-    var h = circMeanDeg(lab[1], lab[2]), weight = C * C;
-    kept++; total += weight; hues.push(h); chromas.push(C);
+    if (lab[0] < L_MIN || lab[0] > L_MAX || C < cmin) continue;
+    var h = circMeanDeg(lab[1], lab[2]), w = C * C, hr = h * Math.PI / 180;
+    kept++; total += w; hues.push(h); chromas.push(C);
+    gx += Math.cos(hr) * w; gy += Math.sin(hr) * w;
     // deposito lineare sui due bin adiacenti: una massa a cavallo di un confine
     // non si spacca piu' in due meta' che perdono tutte e due.
     var pos = h / BINW - 0.5, k0 = Math.floor(pos), f = pos - k0;
-    var ka = (k0 % BINS + BINS) % BINS, kb = (ka + 1) % BINS, hr = h * Math.PI / 180;
-    mass[ka] += weight * (1 - f); mass[kb] += weight * f;
-    sx[ka] += Math.cos(hr) * weight * (1 - f); sy[ka] += Math.sin(hr) * weight * (1 - f);
-    sx[kb] += Math.cos(hr) * weight * f;       sy[kb] += Math.sin(hr) * weight * f;
+    var ka = (k0 % BINS + BINS) % BINS, kb = (ka + 1) % BINS;
+    mass[ka] += w * (1 - f); mass[kb] += w * f;
+    sx[ka] += Math.cos(hr) * w * (1 - f); sy[ka] += Math.sin(hr) * w * (1 - f);
+    sx[kb] += Math.cos(hr) * w * f;       sy[kb] += Math.sin(hr) * w * f;
   }
-  if (!total || kept < 16 || kept / seen < 0.005) return null;
-
+  if (!total || kept < 16) return null;
   var sm = new Array(BINS).fill(0);
   for (var k = 0; k < BINS; k++) {
     var acc = 0, ws = 0;
@@ -234,43 +245,123 @@ function dominantAccent(px, W, H, vividness) {
     }
     sm[k] = acc / ws;
   }
+  return { mass: mass, sx: sx, sy: sy, sm: sm, hues: hues, chromas: chromas,
+           total: total, kept: kept, seen: seen, R: Math.sqrt(gx*gx + gy*gy) / total };
+}
 
-  // I candidati sono tutti i massimi locali, non solo il piu' alto: "quale
-  // tinta occupa piu' spazio" non e' la stessa domanda di "quale colore vedi".
-  // Un fondo verde smorto esteso su meta' foto batte per massa il bagliore
-  // arancione che l'occhio guarda per primo, quindi fra i picchi si sceglie
-  // pesando l'estensione con la carica del colore (vividness: 0 = vince
-  // l'estensione, com'era prima; 1.5 = un colore due volte piu' carico vale
-  // quasi tre volte l'area).
-  var cands = [];
+// I candidati sono tutti i massimi locali, non solo il piu' alto: "quale tinta
+// occupa piu' spazio" non e' la stessa domanda di "quale colore vedi".
+function peaks(st) {
+  var out = [];
   for (var b = 0; b < BINS; b++) {
-    if (sm[b] > sm[(b-1+BINS)%BINS] && sm[b] >= sm[(b+1)%BINS]) cands.push(b);
+    if (st.sm[b] > st.sm[(b-1+BINS)%BINS] && st.sm[b] >= st.sm[(b+1)%BINS]) out.push(b);
   }
-  if (!cands.length) {
+  if (!out.length) {
     var mx = 0;
-    for (var q = 1; q < BINS; q++) if (sm[q] > sm[mx]) mx = q;
-    cands = [mx];
+    for (var q = 1; q < BINS; q++) if (st.sm[q] > st.sm[mx]) mx = q;
+    out = [mx];
   }
+  return out;
+}
 
+function describe(st, bin) {
+  var vx = 0, vy = 0, m = 0;
+  for (var d = -2; d <= 2; d++) {
+    var k = (bin + d + BINS) % BINS;
+    vx += st.sx[k]; vy += st.sy[k]; m += st.mass[k];
+  }
+  var hue = circMeanDeg(vx, vy), band = [];
+  for (var i = 0; i < st.hues.length; i++) {
+    if (arcDist(st.hues[i], hue) <= 20) band.push([st.chromas[i], st.chromas[i] * st.chromas[i]]);
+  }
+  band.sort(function (a, b) { return a[0] - b[0]; });
+  // croma dell'accento: 75-esimo percentile della sua banda pesato sul quadrato
+  // della croma, non la media. Una macchia accesa non viene cosi' annacquata
+  // dai pixel slavati che condividono la sua tinta.
+  return { hue: hue, chroma: percentile(band, 0.75), share: m / st.total,
+           area: band.length / st.seen };
+}
+
+// Tre domande, non una.
+//
+// A — c'e' un colore che si vede? (croma >= 0.025) Fra i picchi si sceglie
+//     pesando l'estensione con la carica: un fondo verde smorto esteso su meta'
+//     foto batte per massa il bagliore arancione che l'occhio guarda per primo,
+//     e non deve vincere (vividness: 0 = vince l'estensione, 1.5 = un colore
+//     due volte piu' carico vale quasi tre volte l'area).
+//
+// B — il fondo ha una tinta? Si riguarda l'immagine accettando anche le
+//     velature (croma >= 0.008) e si chiede se TUTTA la foto concorda su una
+//     tinta sola. Una foto desaturata o una palette Nord rispondono di si'
+//     (R ~ 0.99); un bianco e nero no, perche' la sua poca croma e' rumore di
+//     compressione sparso a caso (R ~ 0.2).
+//
+// C — se il wallpaper e' piatto (meno dell'1% ha colore vero) ma dentro c'e'
+//     qualche macchia accesa, quelle macchie si rileggono a risoluzione piu'
+//     alta: a 96x96 i quattro pallini di un logo sono cinque pixel in croce, e
+//     su cinque pixel non si decide il tema di una scrivania.
+//
+// Da come rispondono escono quattro esiti: un colore solo, due toni (fondo per
+// i pannelli, macchia per l'accento), una velatura sola, o la scala di grigi.
+function accentOf(st, vividness, minArea) {
   var best = null;
-  cands.forEach(function (bin) {
-    var vx = 0, vy = 0, m = 0;
-    for (var d2 = -2; d2 <= 2; d2++) {
-      var k3 = (bin + d2 + BINS) % BINS;
-      vx += sx[k3]; vy += sy[k3]; m += mass[k3];
-    }
-    var hue = circMeanDeg(vx, vy), band = [];
-    for (var i = 0; i < hues.length; i++) if (arcDist(hues[i], hue) <= 20) band.push(chromas[i]);
-    band.sort(function (p1, p2) { return p1 - p2; });
-    // croma dell'accento: 75-esimo percentile della sua banda, non la media.
-    // Una macchia accesa non viene cosi' annacquata dai pixel slavati che
-    // condividono la sua tinta.
-    var chroma = percentile(band, 0.75), share = m / total;
-    if (share < 0.05 || chroma < 0.03) return;
-    var score = share * Math.pow(chroma / CHROMA_REF, vividness);
-    if (!best || score > best.score) best = { hue: hue, chroma: chroma, share: share, score: score };
+  peaks(st).forEach(function (bin) {
+    var c = describe(st, bin);
+    if (c.share < 0.05 || c.chroma < 0.03) return;
+    // Una manciata di pixel non ridipinge la scrivania: sotto la soglia di area
+    // un colore vale solo se e' l'unico che c'e'.
+    if (c.area < minArea && c.share < 0.6) return;
+    c.score = c.share * Math.pow(c.chroma / CHROMA_REF, vividness);
+    if (!best || c.score > best.score) best = c;
   });
   return best;
+}
+
+function fieldOf(px, W, H) {
+  var st = collect(px, W, H, 0.008);
+  if (!st || st.R < 0.9) return null;
+  var top = peaks(st).map(function (b) { return describe(st, b); })
+                     .sort(function (a, b) { return b.share - a.share; })[0];
+  if (!top || top.chroma < 0.020 || top.share < 0.5) return null;
+  top.R = st.R;
+  return top;
+}
+
+// loadHi: funzione che rilegge il wallpaper piu' fitto, chiamata solo se serve
+function decide(px, W, H, vividness, loadHi, twoTone) {
+  var strong = collect(px, W, H, 0.025);
+  var colour = strong ? accentOf(strong, vividness, 0.0025) : null;
+  var flat   = !strong || strong.kept / strong.seen < 0.01;
+
+  // Immagine con del colore vero: decide lui, come sempre.
+  if (colour && !flat) return { accent: colour, field: null, mode: 'colore' };
+
+  var field = flat ? fieldOf(px, W, H) : null;
+
+  // Wallpaper piatto: le macchie si guardano da vicino prima di dargli retta.
+  var speck = null;
+  if (flat) {
+    var hi = loadHi();
+    if (hi) {
+      // Soglia di croma alzata a 0.05: per scavalcare il fondo una macchia deve
+      // essere accesa davvero, non solo diversa. Senza, l'alone di pixel
+      // intermedi attorno alla macchia piu' vicina alla tinta del fondo la fa
+      // sembrare grande il quadruplo delle altre, e vince per quello.
+      var st = collect(hi.px, hi.w, hi.h, 0.05);
+      // 0.02% di 256x256 sono una ventina di pixel: pochi, ma a questa
+      // risoluzione sono un campione, non un artefatto del ridimensionamento.
+      if (st) speck = accentOf(st, vividness, 0.0002);
+    }
+  }
+  if (!speck) speck = colour;
+
+  if (field && speck && twoTone) return { accent: speck, field: field, mode: 'due toni' };
+  if (field && !speck)           return { accent: null,  field: field, mode: 'velatura' };
+  if (field && speck)            return { accent: speck, field: null,  mode: 'colore' };
+  if (speck)                     return { accent: speck, field: null,  mode: 'colore' };
+  var quiet = fieldOf(px, W, H);
+  if (quiet)                     return { accent: null,  field: quiet, mode: 'velatura' };
+  return { accent: null, field: null, mode: 'grigi' };
 }
 
 // Miscela verso la tinta base lungo l'arco corto: con BLEND = 0.3 un wallpaper
@@ -288,25 +379,60 @@ if (!img) {
   $.exit(1);
 }
 
-var dom = dominantAccent(img.px, img.w, img.h, Math.max(VIVIDNESS, 0));
-var hue = dom ? blendHue(BASE_HUE, okHueToHslHue(dom.hue, dom.chroma), clamp(BLEND, 0, 1)) : BASE_HUE;
+var res = decide(img.px, img.w, img.h, Math.max(VIVIDNESS, 0),
+                 function () { return loadPixels(SRC, SIDE_HI); }, TWO_TONE);
+
+// Sotto croma bassa la conversione della tinta va fatta su un colore ben
+// quantizzato, o a 8 bit il tono si sposta di parecchi gradi.
+function hueOf(c) {
+  return blendHue(BASE_HUE, okHueToHslHue(c.hue, Math.max(c.chroma, 0.06)), clamp(BLEND, 0, 1));
+}
 // La scala segue la radice del rapporto di croma: fra pavimento e soffitto c'e'
 // poco spazio, e senza compressione meta' dei wallpaper ci finirebbe appiccicata.
-var satScale = dom ? clamp(Math.sqrt(dom.chroma / CHROMA_REF), SAT_FLOOR, SAT_CAP) : 1.0;
-satScale = 1 + (satScale - 1) * clamp(BLEND, 0, 1);
+function scaleOf(c) {
+  var v = clamp(Math.sqrt(c.chroma / CHROMA_REF), SAT_FLOOR, SAT_CAP);
+  return 1 + (v - 1) * clamp(BLEND, 0, 1);
+}
+
+var accentHue = null, accentScale = null, fieldHue = null, fieldScale = null;
+if (res.accent) { accentHue = hueOf(res.accent); accentScale = scaleOf(res.accent); }
+if (res.field)  { fieldHue  = hueOf(res.field);  fieldScale  = scaleOf(res.field); }
+
+if (accentHue === null && fieldHue === null) {
+  // Senza tinta si scende sotto il pavimento fino al grigio: il pavimento serve
+  // a non spegnere un colore che c'e', non a inventarne uno che non c'e'.
+  accentHue = fieldHue = BASE_HUE;
+  accentScale = fieldScale = 1 + (GREY_SAT - 1) * clamp(BLEND, 0, 1);
+} else if (accentHue === null) {
+  accentHue = fieldHue;  accentScale = fieldScale;
+} else if (fieldHue === null) {
+  fieldHue = accentHue;  fieldScale = accentScale;
+}
+
+// Chi prende la tinta dell'accento e chi quella del fondo. I primi sono i segni
+// in primo piano -- numeri, icone, archi, bordi -- i secondi sono il supporto:
+// vetro, inchiostro, ombre, e il testo di servizio, che deve stare calmo.
+var ACCENT_ROLES = { accent: true, bright: true, mid: true, deep: true };
 
 var c = {};
 Object.keys(TEMA).forEach(function (role) {
-  c[role] = hslToRgb(hue + TEMA[role][2], clamp(TEMA[role][0] * satScale, 0.05, 0.95), TEMA[role][1]);
+  var onAccent = ACCENT_ROLES[role] === true;
+  var h = onAccent ? accentHue : fieldHue, sc = onAccent ? accentScale : fieldScale;
+  c[role] = hslToRgb(h + TEMA[role][2], clamp(TEMA[role][0] * sc, 0.05, 0.95), TEMA[role][1]);
 });
 
 out(JSON.stringify({
   source: SRC,
-  hue: Math.round(hue),
-  wallpaperHue: dom ? Math.round(okHueToHslHue(dom.hue, dom.chroma)) : null,
-  wallpaperChroma: dom ? +dom.chroma.toFixed(3) : null,
-  wallpaperShare: dom ? +dom.share.toFixed(2) : null,
-  satScale: +satScale.toFixed(3),
+  mode: res.mode,
+  hue: Math.round(accentHue),
+  fieldHue: Math.round(fieldHue),
+  satScale: +accentScale.toFixed(3),
+  fieldScale: +fieldScale.toFixed(3),
+  accent: res.accent ? { chroma: +res.accent.chroma.toFixed(3),
+                         area: +(res.accent.area * 100).toFixed(2),
+                         share: +res.accent.share.toFixed(2) } : null,
+  field: res.field ? { chroma: +res.field.chroma.toFixed(3),
+                       agreement: +res.field.R.toFixed(2) } : null,
   vars: {
     '--cd-accent':     hex(c.accent),
     '--cd-bright':     hex(c.bright),

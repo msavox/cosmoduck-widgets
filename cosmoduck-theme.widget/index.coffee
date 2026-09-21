@@ -14,7 +14,11 @@
 # perche' Ubersicht caricherebbe quel file come se fosse un widget.
 
 command: "bash cosmoduck-theme.widget/scripts/collect.sh"
-refreshFrequency: 30000
+# Cinque secondi, non trenta: quando cambi wallpaper il vetro dei widget mostra
+# subito quello nuovo dietro il blur -- lo compone macOS -- e se i colori
+# arrivano mezzo minuto dopo la differenza si vede tutta. Una passata con la
+# cache buona costa ~20 ms, che a questo ritmo e' mezzo millesimo di una CPU.
+refreshFrequency: 5000
 
 style: """
   display: none
@@ -33,5 +37,5 @@ update: (output, domEl) ->
   root.style.setProperty(name, value) for name, value of data.vars
   # Comoda per capire da dove viene la palette: leggila con
   #   document.documentElement.dataset.cosmoduckTheme
-  root.dataset.cosmoduckTheme = "hue #{data.hue} · sat×#{data.satScale} · #{data.source}"
+  root.dataset.cosmoduckTheme = "#{data.mode or "?"} · hue #{data.hue} · sat×#{data.satScale} · #{data.source}"
   return
