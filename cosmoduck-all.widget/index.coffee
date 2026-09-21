@@ -12,10 +12,10 @@ command: "bash cosmoduck-all.widget/scripts/collect.sh"
 refreshFrequency: 5000
 
 style: """
-  top: 480px
+  top: 300px
   left: 168px
   width: 216px
-  height: 566px
+  height: 738px
   box-sizing: border-box
   overflow: hidden
   color: var(--cd-text, #C8D9E8)
@@ -349,6 +349,93 @@ style: """
     height: 100%
     width: 0
     background: var(--cd-accent, #5DADE2)
+
+  .cal-hdr
+    display: flex
+    align-items: center
+    font-size: 12px
+    font-weight: 700
+    color: var(--cd-accent, #5DADE2)
+    margin-bottom: 6px
+  .cal-hdr .mo
+    overflow: hidden
+    white-space: nowrap
+    text-overflow: ellipsis
+  .cal-hdr .td
+    flex: 0 0 auto
+    margin-left: auto
+    padding: 0 4px
+    font-size: 9px
+    font-weight: 400
+    letter-spacing: 0.4px
+    color: var(--cd-bright, #AED6F1)
+    opacity: 0.6
+    border-radius: 4px
+  .cal-hdr .td.btn
+    cursor: pointer
+    opacity: 0.85
+  .cal-hdr .td.btn:hover
+    opacity: 1
+    background: var(--cd-fill, rgba(93,173,226,0.18))
+  .cal-hdr .nav
+    flex: 0 0 auto
+    width: 14px
+    text-align: center
+    font-size: 15px
+    line-height: 15px
+    color: var(--cd-bright, #AED6F1)
+    opacity: 0.45
+    border-radius: 4px
+    cursor: pointer
+    transition: opacity 0.15s, background 0.15s
+  .cal-hdr .nav:hover
+    opacity: 1
+    background: var(--cd-fill, rgba(93,173,226,0.18))
+  .grid
+    display: grid
+    grid-template-columns: 17px repeat(7, 1fr)
+    row-gap: 1px
+  .dow
+    font-size: 8px
+    letter-spacing: 0.4px
+    text-align: center
+    color: var(--cd-bright, #AED6F1)
+    opacity: 0.5
+    padding-bottom: 3px
+    border-bottom: 1px solid var(--cd-rule, rgba(93,173,226,0.14))
+    margin-bottom: 3px
+  .cw
+    height: 19px
+    line-height: 19px
+    text-align: center
+    font-size: 8.5px
+    color: var(--cd-bright, #AED6F1)
+    opacity: 0.3
+    border-right: 1px solid var(--cd-rule-faint, rgba(93,173,226,0.12))
+  .dow.cw
+    height: auto
+    line-height: normal
+    opacity: 0.3
+  .cell
+    height: 19px
+    line-height: 19px
+    text-align: center
+    font-size: 10.5px
+    border-radius: 5px
+    cursor: pointer
+    transition: background 0.15s
+  .cell.we
+    color: var(--cd-mid, #85C1E9)
+  .cell.out
+    opacity: 0.22
+  .cell:hover
+    background: var(--cd-fill, rgba(93,173,226,0.18))
+  .cell.today
+    background: var(--cd-accent, #5DADE2)
+    color: var(--cd-ink, #0F1722)
+    font-weight: 700
+  .cell.today:hover
+    background: var(--cd-mid, #85C1E9)
 """
 
 render: -> """
@@ -426,6 +513,15 @@ render: -> """
     <span class="q"><b>WEEK</b><span class="mini"><i id="a-ccwbar"></i></span><span id="a-ccw">--</span></span>
   </div>
 
+  <div class="rule"></div>
+  <div class="cal-hdr">
+    <span class="mo" id="a-month">—</span>
+    <span class="td" id="a-today"></span>
+    <span class="nav" id="a-prev">&#8249;</span>
+    <span class="nav" id="a-next">&#8250;</span>
+  </div>
+  <div class="grid" id="a-grid"></div>
+
   <div class="pos-indicator" id="coords">T: 0 L: 0</div>
 """
 afterRender: (domEl) ->
@@ -464,12 +560,114 @@ afterRender: (domEl) ->
     updateLockUI()
     e.stopPropagation()
 
+  # ── calendario ──────────────────────────────────────────────────────────────
+  # Stessa griglia della card dedicata: mese con oggi evidenziato, numero di
+  # settimana ISO nella prima colonna, frecce per sfogliare e click su un giorno
+  # per aprire Calendar su quella data. Il mese mostrato e' uno stato del widget
+  # (offset in mesi) che il refresh ogni cinque secondi non deve azzerare.
+  WEEK_START = 1
+  MONTHS = ['JANUARY', 'FEBRUARY', 'MARCH', 'APRIL', 'MAY', 'JUNE', 'JULY',
+            'AUGUST', 'SEPTEMBER', 'OCTOBER', 'NOVEMBER', 'DECEMBER']
+  DOW = ['SU', 'MO', 'TU', 'WE', 'TH', 'FR', 'SA']
+  offset = 0
+  drawn = null
+  pad = (n) -> if n < 10 then "0#{n}" else "#{n}"
+
+  isoWeek = (date) ->
+    thu = new Date(date.getFullYear(), date.getMonth(), date.getDate() + 3 - ((date.getDay() + 6) % 7))
+    first = new Date(thu.getFullYear(), 0, 4)
+    first.setDate(first.getDate() + 3 - ((first.getDay() + 6) % 7))
+    1 + Math.round((thu - first) / 604800000)
+
+  draw = (force) ->
+    day = domEl.dataset.day
+    return unless day
+    key = "#{day}/#{offset}"
+    return if drawn == key and not force
+    drawn = key
+    [y, m, d] = (parseInt(v, 10) for v in day.split('-'))
+    view  = new Date(y, m - 1 + offset, 1)
+    vy    = view.getFullYear()
+    vm    = view.getMonth()
+    lead  = (view.getDay() - WEEK_START + 7) % 7
+    inMon = new Date(vy, vm + 1, 0).getDate()
+    head = ["<div class='dow cw'>CW</div>"]
+    head.push "<div class='dow'>#{DOW[(WEEK_START + i) % 7]}</div>" for i in [0...7]
+    # Sempre 6 righe: l'altezza della card non deve ballare da un mese all'altro.
+    cells = for i in [0...42]
+      n    = i - lead + 1
+      cell = new Date(vy, vm, n)
+      cls  = ['cell']
+      cls.push 'we' if ((WEEK_START + i % 7) % 7) in [0, 6]
+      cls.push 'out' if n < 1 or n > inMon
+      cls.push 'today' if cell.getFullYear() == y and cell.getMonth() == m - 1 and cell.getDate() == d
+      iso = "#{cell.getFullYear()}-#{pad(cell.getMonth() + 1)}-#{pad(cell.getDate())}"
+      # La riga porta il numero di settimana del proprio giovedi'.
+      week = if i % 7 == 0
+        thu = new Date(vy, vm, n + ((4 - WEEK_START + 7) % 7))
+        "<div class='cw'>#{isoWeek(thu)}</div>"
+      else
+        ''
+      week + "<div class='#{cls.join(' ')}' data-date='#{iso}'>#{cell.getDate()}</div>"
+    $(domEl).find('#a-month').text("#{MONTHS[vm]} #{vy}")
+    $(domEl).find('#a-today')
+      .text(if offset == 0 then "#{DOW[new Date(y, m - 1, d).getDay()]} #{d}" else 'TODAY')
+      .toggleClass('btn', offset != 0)
+    $(domEl).find('#a-grid').html(head.join('') + cells.join(''))
+
+  domEl.__draw = draw
+
+  # `run` arriva da Übersicht sull'oggetto del widget (API legacy). Se un domani
+  # sparisse, il click semplicemente non fa nulla invece di rompere il widget.
+  shell = if typeof @run == 'function' then @run.bind(this) else null
+
+  openCal = (iso) ->
+    return unless shell and iso
+    [y, m, d] = (parseInt(v, 10) for v in "#{iso}".split('-'))
+    return if isNaN(y) or isNaN(m) or isNaN(d)
+    # Il giorno si azzera PRIMA di cambiare mese: partendo dal 31 un mese piu'
+    # corto traboccherebbe. Mezzogiorno per stare lontani dai salti d'ora legale.
+    arg = (t) -> "-e '#{t}' "
+    shell "osascript " +
+      arg("set d to current date") + arg("set day of d to 1") +
+      arg("set year of d to #{y}") + arg("set month of d to #{m}") +
+      arg("set day of d to #{d}") + arg("set time of d to 12 * hours") +
+      arg('tell application "Calendar" to activate') +
+      arg('tell application "Calendar" to view calendar at d')
+
   isDragging = false
+  hasMoved = false
   startX = 0
   startY = 0
 
+  # Delegati: la griglia viene riscritta a ogni ridisegno, i suoi figli no.
+  # `hasMoved` distingue il click dal trascinamento partito sopra una cella.
+  $(domEl).on 'click', '#a-prev', (e) ->
+    e.stopPropagation()
+    return if hasMoved
+    offset -= 1
+    draw(true)
+
+  $(domEl).on 'click', '#a-next', (e) ->
+    e.stopPropagation()
+    return if hasMoved
+    offset += 1
+    draw(true)
+
+  $(domEl).on 'click', '#a-today', (e) ->
+    e.stopPropagation()
+    return if hasMoved or offset == 0
+    offset = 0
+    draw(true)
+
+  $(domEl).on 'click', '.cell', (e) ->
+    e.stopPropagation()
+    return if hasMoved
+    openCal($(e.currentTarget).attr('data-date'))
+
   $(domEl).on 'mousedown', (e) ->
     return if isLocked or $(e.target).closest('.lock-btn').length
+    hasMoved = false
     isDragging = true
     $(domEl).addClass('dragging')
     domEl.style.cursor = 'grabbing'
@@ -480,6 +678,7 @@ afterRender: (domEl) ->
 
   mouseMoveHandler = (e) ->
     if isDragging
+      hasMoved = true
       newTop = (e.clientY - startY) + 'px'
       newLeft = (e.clientX - startX) + 'px'
       domEl.style.top = newTop
@@ -637,6 +836,11 @@ update: (output, domEl) ->
         $el.find("##{pfx}f#{i}").css('width', if p then "#{(v / top * 100).toFixed(1)}%" else '0')
     fill((pr.topcpu or []), 'a-c', 25)
     fill((pr.topram or []), 'a-r', 8)
+
+  # ── calendario ─────────────────────────────────────────────────────────────
+  if /^\d{4}-\d{2}-\d{2}$/.test(d.day or '')
+    domEl.dataset.day = d.day
+    domEl.__draw?()
 
   # ── Claude ─────────────────────────────────────────────────────────────────
   cc = d.cc
