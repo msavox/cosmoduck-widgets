@@ -42,12 +42,12 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 | **Hardware Monitor** | CPU/GPU die temperature as gauges (via macmon), battery charge with time to empty or to full, CPU/GPU/System power in watts over the last two minutes' trace |
 | **Claude Code** | Model + reasoning effort in use, real session (5h) and weekly rate-limit usage with % fill bars and next reset time |
 | **Theme** | Nothing — invisible. Derives the accent palette from the wallpaper and publishes it to all the others |
-| **All in one** | Every card above except the clock and the calendar, in a single 272×450 panel |
+| **All in one** | Every card above except the clock and the calendar, in a single 216×566 panel |
 
 ## All in one
 
 `cosmoduck-all.widget` puts weather, system rings, sensors and battery, network, processes and
-Claude usage into one panel 272 points wide, for anyone who would rather have a block than a column. The clock and
+Claude usage into one panel 216 points wide — the calendar's width, so it stacks under it in the same column — for anyone who would rather have a block than a column. The clock and
 the calendar stay out: they are a different kind of thing, and they read better on their own.
 
 It does not duplicate any collector — it calls the ones belonging to the individual widgets, in

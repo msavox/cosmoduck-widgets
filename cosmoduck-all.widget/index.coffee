@@ -12,10 +12,10 @@ command: "bash cosmoduck-all.widget/scripts/collect.sh"
 refreshFrequency: 5000
 
 style: """
-  top: 18px
-  left: 400px
-  width: 272px
-  height: 450px
+  top: 480px
+  left: 168px
+  width: 216px
+  height: 566px
   box-sizing: border-box
   overflow: hidden
   color: var(--cd-text, #C8D9E8)
@@ -33,6 +33,13 @@ style: """
   user-select: none
   pointer-events: auto
   cursor: grab
+
+  // La card e' una colonna flex, e un figlio flex per difetto si lascia
+  // comprimere: quando il contenuto sfiora l'altezza, le righe dei processi si
+  // schiacciavano l'una sull'altra invece di restare intere. Qui nessuno si
+  // stringe -- se proprio non ci sta, meglio che si veda.
+  > *
+    flex: 0 0 auto
 
   &.locked
     cursor: default
@@ -84,6 +91,8 @@ style: """
     margin-bottom: 4px
   .sec .st
     letter-spacing: 0.5px
+  .sec2
+    margin-top: 6px
   .rule
     height: 1px
     margin: 6px 0
@@ -112,15 +121,15 @@ style: """
     font-size: 9px
     line-height: 1.25
     opacity: 0.7
-  .wx-now .stats
-    margin-left: auto
+  .wx-stats
     display: flex
-    gap: 10px
-    font-size: 9.5px
-    opacity: 0.85
-  .wx-now .stats .gly
+    gap: 14px
     font-size: 10px
-    margin-right: 3px
+    opacity: 0.85
+    margin-bottom: 4px
+  .wx-stats .gly
+    font-size: 10px
+    margin-right: 4px
   .fc
     display: grid
     grid-template-columns: repeat(5, 1fr)
@@ -190,11 +199,11 @@ style: """
   .syslegend .r
     display: flex
     align-items: baseline
-    font-size: 11.5px
+    font-size: 11px
     line-height: 1.4
     font-weight: 700
   .syslegend .k
-    width: 42px
+    width: 40px
     flex: 0 0 auto
     opacity: 0.85
   .syslegend .v
@@ -318,9 +327,6 @@ style: """
     align-items: baseline
     gap: 10px
     font-size: 9.5px
-  .cc .model
-    font-weight: 700
-    color: var(--cd-accent, #5DADE2)
   .cc .q
     display: flex
     align-items: baseline
@@ -358,26 +364,26 @@ render: -> """
     <span class="ico" id="a-wicon"></span>
     <span class="t" id="a-wtemp">--°</span>
     <span class="mm"><div id="a-wmax">--</div><div id="a-wmin">--</div></span>
-    <span class="stats">
-      <span><span class="gly" id="a-gwind"></span><span id="a-wind">--</span></span>
-      <span><span class="gly" id="a-ghum"></span><span id="a-hum">--</span></span>
-    </span>
+  </div>
+  <div class="wx-stats">
+    <span><span class="gly" id="a-gwind"></span><span id="a-wind">--</span></span>
+    <span><span class="gly" id="a-ghum"></span><span id="a-hum">--</span></span>
   </div>
   <div class="fc" id="a-fc"></div>
 
   <div class="rule"></div>
   <div class="sec"><span>SYSTEM</span><span class="st" id="a-sysst"></span></div>
   <div class="sysrow">
-    <svg class="rings" width="106" height="42" viewBox="0 0 106 42">
-      <circle class="bg r-cpu"  cx="14" cy="15" r="12"></circle>
-      <circle class="fg r-cpu"  id="a-ring-cpu"  cx="14" cy="15" r="12" stroke-dasharray="0 75.40" transform="rotate(-90 14 15)"></circle>
-      <circle class="bg r-mem"  cx="52" cy="15" r="12"></circle>
-      <circle class="fg r-mem"  id="a-ring-mem"  cx="52" cy="15" r="12" stroke-dasharray="0 75.40" transform="rotate(-90 52 15)"></circle>
-      <circle class="bg r-disk" cx="90" cy="15" r="12"></circle>
-      <circle class="fg r-disk" id="a-ring-disk" cx="90" cy="15" r="12" stroke-dasharray="0 75.40" transform="rotate(-90 90 15)"></circle>
-      <text x="14" y="39">CPU</text>
-      <text x="52" y="39">RAM</text>
-      <text x="90" y="39">DISK</text>
+    <svg class="rings" width="88" height="38" viewBox="0 0 88 38">
+      <circle class="bg r-cpu"  cx="12" cy="13" r="10"></circle>
+      <circle class="fg r-cpu"  id="a-ring-cpu"  cx="12" cy="13" r="10" stroke-dasharray="0 62.83" transform="rotate(-90 12 13)"></circle>
+      <circle class="bg r-mem"  cx="44" cy="13" r="10"></circle>
+      <circle class="fg r-mem"  id="a-ring-mem"  cx="44" cy="13" r="10" stroke-dasharray="0 62.83" transform="rotate(-90 44 13)"></circle>
+      <circle class="bg r-disk" cx="76" cy="13" r="10"></circle>
+      <circle class="fg r-disk" id="a-ring-disk" cx="76" cy="13" r="10" stroke-dasharray="0 62.83" transform="rotate(-90 76 13)"></circle>
+      <text x="12" y="35">CPU</text>
+      <text x="44" y="35">RAM</text>
+      <text x="76" y="35">DISK</text>
     </svg>
     <div class="syslegend">
       <div class="r"><span class="k">LOAD</span><span class="v" id="a-load">--%</span></div>
@@ -389,17 +395,13 @@ render: -> """
 
   <div class="rule"></div>
   <div class="sec"><span>SENSORS</span><span class="st" id="a-battst"></span></div>
-  <div class="grid2">
-    <div class="trow" id="a-row-cpu"><span class="k">CPU</span><span class="bar"><i id="a-bar-cpu"></i></span><span class="v" id="a-cputemp">--</span></div>
-    <div class="trow" id="a-row-gpu"><span class="k">GPU</span><span class="bar"><i id="a-bar-gpu"></i></span><span class="v" id="a-gputemp">--</span></div>
-  </div>
-  <div class="grid2">
-    <div class="trow" id="a-row-bat"><span class="k">BAT</span><span class="bar"><i id="a-bar-bat"></i></span><span class="v" id="a-battpct">--</span></div>
-    <div class="pw">
-      <div><div class="l">CPU W</div><div class="n" id="a-cpupwr">--</div></div>
-      <div><div class="l">GPU W</div><div class="n" id="a-gpupwr">--</div></div>
-      <div><div class="l">SYS W</div><div class="n" id="a-syspwr">--</div></div>
-    </div>
+  <div class="trow" id="a-row-cpu"><span class="k">CPU</span><span class="bar"><i id="a-bar-cpu"></i></span><span class="v" id="a-cputemp">--</span></div>
+  <div class="trow" id="a-row-gpu"><span class="k">GPU</span><span class="bar"><i id="a-bar-gpu"></i></span><span class="v" id="a-gputemp">--</span></div>
+  <div class="trow" id="a-row-bat"><span class="k">BAT</span><span class="bar"><i id="a-bar-bat"></i></span><span class="v" id="a-battpct">--</span></div>
+  <div class="pw">
+    <div><div class="l">CPU W</div><div class="n" id="a-cpupwr">--</div></div>
+    <div><div class="l">GPU W</div><div class="n" id="a-gpupwr">--</div></div>
+    <div><div class="l">SYS W</div><div class="n" id="a-syspwr">--</div></div>
   </div>
 
   <div class="rule"></div>
@@ -408,23 +410,18 @@ render: -> """
   <div class="netrow"><span class="k"><span class="gly" id="a-gup"></span><span id="a-up">--</span></span><span class="sp" id="a-spup"></span></div>
 
   <div class="rule"></div>
-  <div class="sec"><span>PROCESSES</span><span class="st">CPU % · MEM %</span></div>
-  <div class="grid2">
-    <div>
-      <div class="prow"><span class="fill" id="a-cf0"></span><span class="n" id="a-cn0"></span><span class="p" id="a-cp0"></span></div>
-      <div class="prow"><span class="fill" id="a-cf1"></span><span class="n" id="a-cn1"></span><span class="p" id="a-cp1"></span></div>
-      <div class="prow"><span class="fill" id="a-cf2"></span><span class="n" id="a-cn2"></span><span class="p" id="a-cp2"></span></div>
-    </div>
-    <div>
-      <div class="prow"><span class="fill" id="a-rf0"></span><span class="n" id="a-rn0"></span><span class="p" id="a-rp0"></span></div>
-      <div class="prow"><span class="fill" id="a-rf1"></span><span class="n" id="a-rn1"></span><span class="p" id="a-rp1"></span></div>
-      <div class="prow"><span class="fill" id="a-rf2"></span><span class="n" id="a-rn2"></span><span class="p" id="a-rp2"></span></div>
-    </div>
-  </div>
+  <div class="sec"><span>CPU</span><span class="st">%</span></div>
+  <div class="prow"><span class="fill" id="a-cf0"></span><span class="n" id="a-cn0"></span><span class="p" id="a-cp0"></span></div>
+  <div class="prow"><span class="fill" id="a-cf1"></span><span class="n" id="a-cn1"></span><span class="p" id="a-cp1"></span></div>
+  <div class="prow"><span class="fill" id="a-cf2"></span><span class="n" id="a-cn2"></span><span class="p" id="a-cp2"></span></div>
+  <div class="sec sec2"><span>MEMORY</span><span class="st">%</span></div>
+  <div class="prow"><span class="fill" id="a-rf0"></span><span class="n" id="a-rn0"></span><span class="p" id="a-rp0"></span></div>
+  <div class="prow"><span class="fill" id="a-rf1"></span><span class="n" id="a-rn1"></span><span class="p" id="a-rp1"></span></div>
+  <div class="prow"><span class="fill" id="a-rf2"></span><span class="n" id="a-rn2"></span><span class="p" id="a-rp2"></span></div>
 
   <div class="rule"></div>
+  <div class="sec"><span>CLAUDE</span><span class="st" id="a-ccmodel">—</span></div>
   <div class="cc">
-    <span class="model" id="a-ccmodel">—</span>
     <span class="q"><b>SESS</b><span class="mini"><i id="a-ccsbar"></i></span><span id="a-ccs">--</span></span>
     <span class="q"><b>WEEK</b><span class="mini"><i id="a-ccwbar"></i></span><span id="a-ccw">--</span></span>
   </div>
@@ -552,7 +549,7 @@ update: (output, domEl) ->
   if sys
     ring = (id, pct) ->
       f = Math.max(0, Math.min(100, pct or 0)) / 100
-      $el.find(id).attr('stroke-dasharray', "#{(f * 75.40).toFixed(2)} 75.40")
+      $el.find(id).attr('stroke-dasharray', "#{(f * 62.83).toFixed(2)} 62.83")
     ring('#a-ring-cpu', sys.cpu)
     ring('#a-ring-mem', sys.mem)
     ring('#a-ring-disk', sys.diskData)
@@ -644,7 +641,7 @@ update: (output, domEl) ->
   # ── Claude ─────────────────────────────────────────────────────────────────
   cc = d.cc
   if cc
-    $el.find('#a-ccmodel').text(cc.model or '—')
+    $el.find('#a-ccmodel').text((cc.model or '').toUpperCase())
     for [q, bar, val] in [[cc.session, '#a-ccsbar', '#a-ccs'], [cc.week, '#a-ccwbar', '#a-ccw']]
       continue unless q
       $el.find(bar).css('width', "#{Math.max(0, Math.min(100, q.pct or 0))}%")
