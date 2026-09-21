@@ -139,18 +139,32 @@ style: """
     font-family: 'CDFeather'
     color: var(--cd-mid, #85C1E9)
 
-  .wx-now
+  // Il meteo di adesso sta su una griglia di due righe e tre colonne, non su
+  // due righe indipendenti: la prima colonna tiene temperatura e vento, la
+  // seconda le estreme di oggi e l'umidita'. Cosi' l'umidita' cade sotto i due
+  // numeri della giornata invece di finire a meta' strada, e le due colonne si
+  // allargano insieme al testo piu' largo che contengono. La terza -- lo spazio
+  // che restava vuoto a destra -- e' il nome della citta'.
+  .wx
+    display: grid
+    grid-template-columns: auto auto 1fr
+    column-gap: 12px
+    row-gap: 3px
+    align-items: center
+    margin-bottom: 4px
+  .wx .now
+    grid-column: 1
+    grid-row: 1
     display: flex
     align-items: baseline
     gap: 8px
-    margin-bottom: 4px
-  .wx-now .ico
+  .wx .ico
     font-family: 'CDFeather'
     font-size: 22px
     line-height: 1
     color: var(--cd-text, #C8D9E8)
     transform: translateY(2px)
-  .wx-now .t
+  .wx .t
     font-family: 'CDBebas', sans-serif
     font-size: 26px
     line-height: 1
@@ -159,26 +173,45 @@ style: """
   // appoggiarsi alla sua linea di base, che le faceva pendere in basso. La
   // freccia sta in una colonnina di larghezza fissa, cosi' i due numeri si
   // incolonnano invece di ballare a seconda della freccia.
-  .wx-now .mm
-    align-self: center
+  .wx .mm
+    grid-column: 2
+    grid-row: 1
     font-size: 11px
     line-height: 1.3
     opacity: 0.75
-  .wx-now .mm .g
+  .wx .mm .g
     font-family: 'CDFeather'
     display: inline-block
     width: 12px
     font-size: 9px
     opacity: 0.7
-  .wx-stats
-    display: flex
-    gap: 14px
+  // Come nella card meteo da sola: non la scritta piccola e spaziata
+  // dell'intestazione, ma il nome scritto per esteso, nel colore d'accento.
+  .wx .city
+    grid-column: 3
+    grid-row: 1 / span 2
+    align-self: start
+    text-align: left
+    font-size: 14px
+    line-height: 1.2
+    font-weight: 700
+    color: var(--cd-accent, #5DADE2)
+    overflow: hidden
+    text-overflow: ellipsis
+    white-space: nowrap
+  .wx .wind
+    grid-column: 1
+    grid-row: 2
+  .wx .hum
+    grid-column: 2
+    grid-row: 2
+  .wx .wind, .wx .hum
     font-size: 10px
     opacity: 0.85
-    margin-bottom: 4px
-  .wx-stats .gly
+  .wx .wind .gly, .wx .hum .gly
     font-size: 10px
-    margin-right: 4px
+    display: inline-block
+    width: 12px
   .fc
     display: grid
     grid-template-columns: repeat(5, 1fr)
@@ -501,18 +534,19 @@ render: -> """
   </style>
   <div class="lock-btn" id="lock-toggle"></div>
 
-  <div class="sec"><span>WEATHER</span><span class="st" id="a-city">—</span></div>
-  <div class="wx-now">
-    <span class="ico" id="a-wicon"></span>
-    <span class="t" id="a-wtemp">--°</span>
-    <span class="mm">
+  <div class="sec"><span>WEATHER</span></div>
+  <div class="wx">
+    <div class="now">
+      <span class="ico" id="a-wicon"></span>
+      <span class="t" id="a-wtemp">--°</span>
+    </div>
+    <div class="mm">
       <div><span class="g" id="a-gmax"></span><span id="a-wmax">--</span></div>
       <div><span class="g" id="a-gmin"></span><span id="a-wmin">--</span></div>
-    </span>
-  </div>
-  <div class="wx-stats">
-    <span><span class="gly" id="a-gwind"></span><span id="a-wind">--</span></span>
-    <span><span class="gly" id="a-ghum"></span><span id="a-hum">--</span></span>
+    </div>
+    <div class="city" id="a-city">—</div>
+    <div class="wind"><span class="gly" id="a-gwind"></span><span id="a-wind">--</span></div>
+    <div class="hum"><span class="gly" id="a-ghum"></span><span id="a-hum">--</span></div>
   </div>
   <div class="fc" id="a-fc"></div>
 
@@ -784,7 +818,7 @@ update: (output, domEl) ->
   if w?.main and w?.weather?[0]
     $el.find('#a-wicon').html(glyph(w.weather[0].icon))
     $el.find('#a-wtemp').text("#{Math.round(w.main.temp)}°")
-    $el.find('#a-city').text((w.name or '').toUpperCase())
+    $el.find('#a-city').text(w.name or '—')
     $el.find('#a-gwind').text(ch(WIND))
     $el.find('#a-ghum').text(ch(DROP))
     $el.find('#a-wind').text("#{Math.round(w.wind.speed * 10) / 10} m/s")
