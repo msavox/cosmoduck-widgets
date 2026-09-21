@@ -1,6 +1,6 @@
 #!/bin/bash
 # Cosmoduck · tema — trova il wallpaper in uso e ne deriva la palette.
-# Emette su stdout il JSON di palette.js (o niente, se qualcosa non torna: il
+# Emette su stdout il JSON di palette.jxa (o niente, se qualcosa non torna: il
 # widget tiene allora l'ultima palette buona, e sotto c'e' comunque il colore
 # originale come fallback CSS).
 export LC_ALL=C PATH="/usr/bin:/bin:$PATH"
@@ -10,8 +10,12 @@ export LC_ALL=C PATH="/usr/bin:/bin:$PATH"
 #           0.3 = il blu Cosmoduck spostato di poco, 0 = tema originale intatto.
 # SAT_FLOOR pavimento della saturazione, in frazione di quella originale. Senza,
 #           un wallpaper slavato produce widget grigiastri e illeggibili.
+# VIVIDNESS come si sceglie fra le tinte presenti: 0 = vince quella piu' estesa,
+#           1.5 = il colore carico batte il fondo smorto anche se piccolo,
+#           3 = basta una macchia accesa per dettare il tema.
 BLEND=${COSMODUCK_THEME_BLEND:-1.0}
 SAT_FLOOR=${COSMODUCK_THEME_SAT_FLOOR:-0.75}
+VIVIDNESS=${COSMODUCK_THEME_VIVIDNESS:-1.5}
 # ───────────────────────────────────────────────────────────────────────────────
 
 # NB: lo script JXA si chiama .jxa, non .js, e non e' un vezzo. Ubersicht
@@ -72,15 +76,15 @@ esac
 # esistendo.
 [ -r "$FILE" ] || give_up "wallpaper non leggibile: $FILE (permessi di Ubersicht sulla cartella?)"
 
-# Decodificare il wallpaper costa mezzo secondo e non cambia finche' non cambia
-# lui: si ricalcola solo quando path, mtime o taratura si muovono.
-KEY="$FILE|$(stat -f %m "$FILE" 2>/dev/null)|$BLEND|$SAT_FLOOR"
+# Decodificare il wallpaper costa un paio di decimi e non cambia finche' non
+# cambia lui: si ricalcola solo quando path, mtime o taratura si muovono.
+KEY="$FILE|$(stat -f %m "$FILE" 2>/dev/null)|$BLEND|$SAT_FLOOR|$VIVIDNESS"
 if [ -r "$CACHE" ] && [ -r "$CACHE_KEY" ] && [ "$(cat "$CACHE_KEY")" = "$KEY" ]; then
   cat "$CACHE"
   exit 0
 fi
 
-JSON=$(osascript -l JavaScript "$DIR/palette.jxa" "$SRC" "$BLEND" "$SAT_FLOOR" 2>>"$LOG")
+JSON=$(osascript -l JavaScript "$DIR/palette.jxa" "$SRC" "$BLEND" "$SAT_FLOOR" "$VIVIDNESS" 2>>"$LOG")
 case "$JSON" in
   \{*\}) ;;
   *) give_up "palette.jxa non ha prodotto JSON (vedi le righe qui sopra)" ;;

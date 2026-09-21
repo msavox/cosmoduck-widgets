@@ -9,7 +9,7 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 
 ## Features
 - **Frosted glass** — translucent tinted panels with `backdrop-filter` blur, thin blue border and inner highlight. The blur picks up your wallpaper.
-- **Accent from the wallpaper** — an invisible theme widget reads the wallpaper in use, pulls its dominant hue out and recolours the whole set to match. Remove the widget and everything falls back to the original blue.
+- **Accent from the wallpaper** — an invisible theme widget reads the wallpaper in use, picks the colour your eye picks — the vivid one, not merely the widest — and recolours the whole set to match. Remove the widget and everything falls back to the original blue.
 - **Draggable & lockable** — click‑drag any widget to reposition; each has a small monochrome lock icon (shown on hover) to freeze it. Positions and lock state persist across reboots and refreshes (via `localStorage`).
 - **Real sensors on Apple Silicon** — CPU/GPU die temperature and power draw via [`macmon`](https://github.com/vladkens/macmon) (no `sudo`).
 - **Two‑layer clock** — large Bebas Neue digits with the original Cosmoduck colour‑inversion between hours and minutes.
@@ -56,26 +56,41 @@ Made for a MacBook Air M‑series, tuned on a notch display.
   Only the *hue* comes from the wallpaper. Lightness stays where it was, because that is what
   decides whether text reads on the dark glass, and a photo does not get a vote on it. Saturation
   scales with the wallpaper's own, between a floor and a ceiling: a washed-out picture gives a
-  quieter theme, a vivid one a livelier theme, neither an illegible one. Tune it at the top of
-  `cosmoduck-theme.widget/scripts/collect.sh`:
+  quieter theme, a vivid one a livelier theme, neither an illegible one.
+
+  How the colour is found: the picture is redrawn into a small bitmap, so every pixel of it is the
+  average of the area it stands for and nothing falls between two samples. Each pixel is read in
+  **Oklab** rather than HSL — HSL's degrees are not perceptually even and its *S* does not say how
+  charged a colour is. Hues go into a 72-bin histogram, each pixel spread across the two bins it
+  straddles so a colour sitting on a boundary is not split in half. Then every peak of that
+  histogram is a candidate, and the winner is the one whose *extent weighted by charge* is
+  highest: a small vivid flower beats a large washed-out sky, which is how a person would read the
+  picture. A wallpaper with no colour to give — black and white, or a tint so faint that using it
+  would mean inventing it — keeps the Cosmoduck blue instead of amplifying its compression noise.
+
+  Tune it at the top of `cosmoduck-theme.widget/scripts/collect.sh`:
 
   | Variable | Default | Meaning |
   |---|---|---|
   | `BLEND` | `1.0` | how much the wallpaper decides. `1` adopts its hue outright, `0.3` nudges the Cosmoduck blue a few dozen degrees, `0` leaves the original theme untouched |
   | `SAT_FLOOR` | `0.75` | saturation floor, as a fraction of the original. Without it a grey wallpaper produces grey widgets |
+  | `VIVIDNESS` | `1.5` | how the winner is chosen among the hues present. `0` gives it to the widest one, `1.5` lets a charged colour outweigh a dull backdrop, `3` lets one bright patch set the theme |
 
-  Both also read from the environment as `COSMODUCK_THEME_BLEND` and `COSMODUCK_THEME_SAT_FLOOR`.
+  All three also read from the environment, as `COSMODUCK_THEME_BLEND`, `COSMODUCK_THEME_SAT_FLOOR`
+  and `COSMODUCK_THEME_VIVIDNESS`.
 
   The wallpaper is read from macOS's own registry
   (`~/Library/Application Support/com.apple.wallpaper/Store/Index.plist`), which needs **no
   permission**. Only if that fails does it ask System Events, and *that* raises the usual
-  *"Übersicht wants to control System Events"* prompt. Decoding the picture costs about half a
-  second, so the result is cached in `~/.cache/cosmoduck/` and recomputed only when the wallpaper,
-  its mtime or the tuning changes.
+  *"Übersicht wants to control System Events"* prompt. Decoding the picture costs a couple of
+  tenths of a second, so the result is cached in `~/.cache/cosmoduck/` and recomputed only when
+  the wallpaper, its mtime or the tuning changes.
 
-  Two known limits: the wallpaper can differ per display and per Space, while the palette is one
-  per screen — the most recently set wallpaper wins; and the widgets pick up a change at the next
-  30 s refresh, not the instant you set it.
+  Three known limits: the wallpaper can differ per display and per Space, while the palette is one
+  per screen — the most recently set wallpaper wins; the widgets pick up a change at the next 30 s
+  refresh, not the instant you set it; and a *dynamic* wallpaper (the `hello …` ones, `.madesktop`)
+  is not an image file, so it cannot be read — the last good palette stays, and
+  `~/.cache/cosmoduck/theme.log` says so.
 - **Weather** — needs a free [OpenWeatherMap](https://openweathermap.org/api) key. Keep it out of
   the repo, in `~/.config/cosmoduck/weather.env`:
 

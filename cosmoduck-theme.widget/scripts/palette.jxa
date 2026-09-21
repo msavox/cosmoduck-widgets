@@ -1,7 +1,7 @@
 #!/usr/bin/env osascript -l JavaScript
 // Cosmoduck · palette — estrae un accento dal wallpaper.
 //
-// Uso:  osascript -l JavaScript palette.js <file-url-o-path> <blend> <sat-floor>
+// Uso:  osascript -l JavaScript palette.jxa <file-url-o-path> <blend> <sat-floor> <vividness>
 // Stdout: un oggetto JSON di variabili CSS, o niente (exit 1) se l'immagine non
 // si apre. Nessuna dipendenza: solo il bridge ObjC di JXA.
 //
@@ -10,7 +10,14 @@
 // wallpaper vuol dire ruotare la tinta e riscalare la saturazione, tenendo la
 // luminosita' dov'e': e' la L che decide se il testo si legge sul vetro scuro,
 // e quella non la puo' dettare una foto.
+//
+// L'analisi pero' non si fa in HSL, che mente su entrambe le cose che qui
+// contano: i suoi gradi non sono percettivamente uniformi (il giallo occupa una
+// fetta strettissima del cerchio, il blu una enorme) e la sua S non dice quanto
+// un colore sia carico (un giallo e un blu con la stessa S non lo sono). Si
+// legge quindi in Oklab, e solo il risultato torna in HSL per comporre il tema.
 ObjC.import('AppKit');
+ObjC.import('Quartz');
 ObjC.import('stdlib');
 
 // osascript -l JavaScript <script> a b c  ->  argv[0..3] sono l'interprete e i
@@ -20,10 +27,14 @@ var ARGV = ObjC.deepUnwrap($.NSProcessInfo.processInfo.arguments).slice(4);
 var SRC       = ARGV[0] || null;
 var BLEND     = parseFloat(ARGV[1]); if (isNaN(BLEND))     BLEND = 1.0;
 var SAT_FLOOR = parseFloat(ARGV[2]); if (isNaN(SAT_FLOOR)) SAT_FLOOR = 0.75;
+var VIVIDNESS = parseFloat(ARGV[3]); if (isNaN(VIVIDNESS)) VIVIDNESS = 1.5;
 
-var BASE_HUE = 204;          // la tinta Cosmoduck, usata come ancora e ripiego
-var SAT_REF  = 0.35;         // saturazione del wallpaper che vale "scala 1.0"
-var SAT_CAP  = 1.15;         // quanto puo' spingere un wallpaper molto acceso
+var BASE_HUE   = 204;        // la tinta Cosmoduck, usata come ancora e ripiego
+var CHROMA_REF = 0.085;      // croma Oklab che vale "scala 1.0": la mediana di
+                             // un campione di 476 wallpaper, cosi' la foto
+                             // tipica riproduce la saturazione originale
+var SAT_CAP    = 1.15;       // quanto puo' spingere un wallpaper molto acceso
+var SIDE       = 96;         // lato del bitmap su cui si misura
 
 // ruolo: [saturazione, luminosita', scarto di tinta] — misurati sui colori
 // hardcoded originali, che non sono su una tinta sola: i tre toni scuri stanno
@@ -41,6 +52,7 @@ var TEMA = {
 
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
+// ── colore ────────────────────────────────────────────────────────────────────
 function rgbToHsl(r, g, b) {
   r /= 255; g /= 255; b /= 255;
   var mx = Math.max(r, g, b), mn = Math.min(r, g, b), l = (mx + mn) / 2, h = 0, s = 0;
@@ -64,6 +76,46 @@ function hslToRgb(h, s, l) {
   return [f(0), f(8), f(4)];
 }
 
+function srgbToLinear(c) {
+  c /= 255;
+  return c <= 0.04045 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4);
+}
+
+// sRGB -> Oklab (Björn Ottosson). Ritorna [L, a, b].
+function oklab(r, g, b) {
+  var R = srgbToLinear(r), G = srgbToLinear(g), B = srgbToLinear(b);
+  var l = Math.cbrt(0.4122214708 * R + 0.5363325363 * G + 0.0514459929 * B);
+  var m = Math.cbrt(0.2119034982 * R + 0.6806995451 * G + 0.1073969566 * B);
+  var s = Math.cbrt(0.0883024619 * R + 0.2817188376 * G + 0.6299787005 * B);
+  return [0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+          1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+          0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s];
+}
+
+function oklchToSrgb(L, C, hDeg) {
+  var h = hDeg * Math.PI / 180, a = C * Math.cos(h), bb = C * Math.sin(h);
+  var l = L + 0.3963377774 * a + 0.2158037573 * bb;
+  var m = L - 0.1055613458 * a - 0.0638541728 * bb;
+  var s = L - 0.0894841775 * a - 1.2914855480 * bb;
+  l = l * l * l; m = m * m * m; s = s * s * s;
+  var R =  4.0767416621 * l - 3.3077115913 * m + 0.2309699292 * s;
+  var G = -1.2684380046 * l + 2.6097574011 * m - 0.3413193965 * s;
+  var B = -0.0041960863 * l - 0.7034186147 * m + 1.7076147010 * s;
+  var enc = function (u) {
+    u = clamp(u, 0, 1);
+    return Math.round(255 * (u <= 0.0031308 ? 12.92 * u : 1.055 * Math.pow(u, 1 / 2.4) - 0.055));
+  };
+  return [enc(R), enc(G), enc(B)];
+}
+
+// La tinta percettiva non e' la tinta HSL (fra le due ci sono decine di gradi
+// di scarto sui verdi e sui viola): per tornare in HSL si costruisce il colore
+// che quella tinta rappresenta e gli si chiede la sua H.
+function okHueToHslHue(hue, chroma) {
+  var rgb = oklchToSrgb(0.65, Math.min(chroma, 0.12), hue);
+  return rgbToHsl(rgb[0], rgb[1], rgb[2])[0];
+}
+
 function hex(rgb) {
   return '#' + rgb.map(function (v) { return v.toString(16).padStart(2, '0'); }).join('').toUpperCase();
 }
@@ -78,55 +130,147 @@ function emit(handle, text) {
 function out(text) { emit($.NSFileHandle.fileHandleWithStandardOutput, text + '\n'); }
 function err(text) { emit($.NSFileHandle.fileHandleWithStandardError, text + '\n'); }
 
-function loadRep(src) {
+// ── pixel ─────────────────────────────────────────────────────────────────────
+var B64 = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+var B64REV = {}; for (var _i = 0; _i < 64; _i++) B64REV[B64[_i]] = _i;
+
+function b64bytes(s) {
+  var buf = new Uint8Array(Math.floor(s.length * 3 / 4)), n = 0, acc = 0, bits = 0;
+  for (var i = 0; i < s.length; i++) {
+    var v = B64REV[s[i]]; if (v === undefined) continue;
+    acc = (acc << 6) | v; bits += 6;
+    if (bits >= 8) { bits -= 8; buf[n++] = (acc >> bits) & 255; }
+  }
+  return buf.subarray(0, n);
+}
+function i32(b, p) { return (b[p] | (b[p+1] << 8) | (b[p+2] << 16) | (b[p+3] << 24)) | 0; }
+
+// Il wallpaper viene ridisegnato in un bitmap piccolo invece che campionato a
+// punti: ogni pixel del buffer e' la media dell'area che gli corrisponde,
+// quindi nessuna macchia cade fra un campione e l'altro e il rumore di
+// compressione si media via. Si passa da Core Graphics perche' NSImage non
+// disegna in un contesto che non sia quello corrente.
+function loadPixels(src, side) {
   var img = /^file:\/\//.test(src)
     ? $.NSImage.alloc.initWithContentsOfURL($.NSURL.URLWithString(src))
     : $.NSImage.alloc.initWithContentsOfFile(src);
   if (!img || !img.js || !img.isValid) return null;
-  // Attraverso la TIFFRepresentation invece di disegnare in un contesto: il
-  // wallpaper puo' essere HEIC, dinamico o multi-risoluzione, e qui prendiamo
-  // comunque una rappresentazione bitmap gia' risolta.
-  var rep = $.NSBitmapImageRep.imageRepWithData(img.TIFFRepresentation);
-  return rep && rep.js ? rep : null;
-}
-
-// Tinta dominante: istogramma a 36 bin pesato sul quadrato della saturazione,
-// cosi' una piccola zona accesa conta piu' di un grande fondo slavato — che e'
-// esattamente come l'occhio sceglie "il colore" di una foto. Poi si media sul
-// bin vincente piu' i due vicini, perche' il confine fra bin non deve far
-// saltare l'accento di 10 gradi per un pixel.
-function dominantHue(rep) {
-  var W = rep.pixelsWide, H = rep.pixelsHigh, N = 48, BINS = 36;
-  var w = new Array(BINS).fill(0), sh = new Array(BINS).fill(0), ss = new Array(BINS).fill(0);
-  var ref = $.NSCalibratedRGBColorSpace, total = 0;
-  for (var i = 0; i < N; i++) {
-    for (var j = 0; j < N; j++) {
-      var c = rep.colorAtXY(Math.floor((i + 0.5) * W / N), Math.floor((j + 0.5) * H / N));
-      c = c.colorUsingColorSpaceName(ref);
-      if (!c.js) continue;
-      var hsl = rgbToHsl(c.redComponent * 255, c.greenComponent * 255, c.blueComponent * 255);
-      if (hsl[2] < 0.10 || hsl[2] > 0.92 || hsl[1] < 0.10) continue;  // nero, bianco, grigio
-      var k = Math.floor(hsl[0] / (360 / BINS)) % BINS;
-      var weight = hsl[1] * hsl[1] * (1 - Math.abs(hsl[2] - 0.5) * 0.6);
-      w[k] += weight; ss[k] += hsl[1] * weight; total += weight;
-      // le tinte si mediano sul cerchio: sommare 359 e 1 in scalare da' 180
-      sh[k] += weight * hsl[0] * Math.PI / 180;
+  var cg = img.CGImageForProposedRectContextHints($(), $(), $());
+  if (!cg) return null;
+  var rep = $.NSBitmapImageRep.alloc
+    .initWithBitmapDataPlanesPixelsWidePixelsHighBitsPerSampleSamplesPerPixelHasAlphaIsPlanarColorSpaceNameBytesPerRowBitsPerPixel(
+      $(), side, side, 8, 4, true, false, $.NSCalibratedRGBColorSpace, 0, 0);
+  if (!rep || !rep.js) return null;
+  var ctx = $.NSGraphicsContext.graphicsContextWithBitmapImageRep(rep);
+  if (!ctx || !ctx.js) return null;
+  $.CGContextSetInterpolationQuality(ctx.CGContext, 3);           // kCGInterpolationHigh
+  $.CGContextDrawImage(ctx.CGContext, $.CGRectMake(0, 0, side, side), cg);
+  // I byte del bitmap non si leggono da JXA: bitmapData e' un puntatore grezzo,
+  // e darlo in pasto a NSData fa cadere osascript. Si riesporta quindi in BMP,
+  // l'unico formato non compresso che NSBitmapImageRep sa scrivere, e lo si
+  // rilegge via base64 — un paio di millisecondi a questa dimensione.
+  var bmp = rep.representationUsingTypeProperties(1, $());        // 1 = NSBitmapImageFileTypeBMP
+  if (!bmp || !bmp.js) return null;
+  var b = b64bytes(ObjC.unwrap(bmp.base64EncodedStringWithOptions(0)));
+  var off = i32(b, 10), w = i32(b, 18), h = i32(b, 22), bpp = b[28] | (b[29] << 8);
+  var topDown = h < 0; h = Math.abs(h);
+  if (w <= 0 || h <= 0 || (bpp !== 24 && bpp !== 32)) return null;
+  var stride = bpp / 8, rowBytes = Math.floor((bpp * w + 31) / 32) * 4;
+  var px = new Uint8Array(w * h * 3);
+  for (var y = 0; y < h; y++) {
+    var row = off + (topDown ? y : h - 1 - y) * rowBytes, o = y * w * 3;
+    for (var x = 0; x < w; x++) {
+      var p = row + x * stride;
+      px[o + x*3] = b[p+2]; px[o + x*3 + 1] = b[p+1]; px[o + x*3 + 2] = b[p];
     }
   }
-  if (total < 0.5) return null;                      // wallpaper piatto o monocromo
-  var best = 0;
-  for (var b = 1; b < BINS; b++) if (w[b] > w[best]) best = b;
-  var x = 0, y = 0, sat = 0, acc = 0;
-  for (var d = -1; d <= 1; d++) {
-    var k2 = (best + d + BINS) % BINS;
-    if (!w[k2]) continue;
-    var hk = sh[k2] / w[k2];
-    x += Math.cos(hk) * w[k2]; y += Math.sin(hk) * w[k2];
-    sat += ss[k2]; acc += w[k2];
+  return { w: w, h: h, px: px };
+}
+
+// ── accento ───────────────────────────────────────────────────────────────────
+var BINS = 72, BINW = 360 / BINS;      // bin da 5 gradi
+var KERNEL = [1, 2, 3, 2, 1];          // lisciatura circolare, +-10 gradi
+
+function circMeanDeg(x, y) { var d = Math.atan2(y, x) * 180 / Math.PI; return (d % 360 + 360) % 360; }
+function arcDist(a, b) { var d = Math.abs(a - b) % 360; return d > 180 ? 360 - d : d; }
+function percentile(sorted, q) {
+  if (!sorted.length) return 0;
+  var i = (sorted.length - 1) * q, lo = Math.floor(i), hi = Math.ceil(i);
+  return sorted[lo] + (sorted[hi] - sorted[lo]) * (i - lo);
+}
+
+// Ritorna { hue, chroma } in Oklab, oppure null se il wallpaper non ha colore
+// da dare (bianco e nero, o una velatura cosi' tenue che amplificarla vorrebbe
+// dire inventarsela: e' il caso in cui il vecchio istogramma pescava tinte a
+// caso dal rumore di compressione).
+function dominantAccent(px, W, H, vividness) {
+  var L_MIN = 0.12, L_MAX = 0.97, C_MIN = 0.025;
+  var mass = new Array(BINS).fill(0), sx = new Array(BINS).fill(0), sy = new Array(BINS).fill(0);
+  var hues = [], chromas = [], total = 0, seen = 0, kept = 0;
+
+  for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
+    var p = (y * W + x) * 3, lab = oklab(px[p], px[p+1], px[p+2]);
+    seen++;
+    var C = Math.sqrt(lab[1]*lab[1] + lab[2]*lab[2]);
+    if (lab[0] < L_MIN || lab[0] > L_MAX || C < C_MIN) continue;   // nero, bianco, grigio
+    var h = circMeanDeg(lab[1], lab[2]), weight = C * C;
+    kept++; total += weight; hues.push(h); chromas.push(C);
+    // deposito lineare sui due bin adiacenti: una massa a cavallo di un confine
+    // non si spacca piu' in due meta' che perdono tutte e due.
+    var pos = h / BINW - 0.5, k0 = Math.floor(pos), f = pos - k0;
+    var ka = (k0 % BINS + BINS) % BINS, kb = (ka + 1) % BINS, hr = h * Math.PI / 180;
+    mass[ka] += weight * (1 - f); mass[kb] += weight * f;
+    sx[ka] += Math.cos(hr) * weight * (1 - f); sy[ka] += Math.sin(hr) * weight * (1 - f);
+    sx[kb] += Math.cos(hr) * weight * f;       sy[kb] += Math.sin(hr) * weight * f;
   }
-  if (!acc) return null;
-  var hue = Math.atan2(y, x) * 180 / Math.PI;
-  return { hue: ((hue % 360) + 360) % 360, sat: sat / acc };
+  if (!total || kept < 16 || kept / seen < 0.005) return null;
+
+  var sm = new Array(BINS).fill(0);
+  for (var k = 0; k < BINS; k++) {
+    var acc = 0, ws = 0;
+    for (var d = -2; d <= 2; d++) {
+      var kk = (k + d + BINS) % BINS, kw = KERNEL[d + 2];
+      acc += mass[kk] * kw; ws += kw;
+    }
+    sm[k] = acc / ws;
+  }
+
+  // I candidati sono tutti i massimi locali, non solo il piu' alto: "quale
+  // tinta occupa piu' spazio" non e' la stessa domanda di "quale colore vedi".
+  // Un fondo verde smorto esteso su meta' foto batte per massa il bagliore
+  // arancione che l'occhio guarda per primo, quindi fra i picchi si sceglie
+  // pesando l'estensione con la carica del colore (vividness: 0 = vince
+  // l'estensione, com'era prima; 1.5 = un colore due volte piu' carico vale
+  // quasi tre volte l'area).
+  var cands = [];
+  for (var b = 0; b < BINS; b++) {
+    if (sm[b] > sm[(b-1+BINS)%BINS] && sm[b] >= sm[(b+1)%BINS]) cands.push(b);
+  }
+  if (!cands.length) {
+    var mx = 0;
+    for (var q = 1; q < BINS; q++) if (sm[q] > sm[mx]) mx = q;
+    cands = [mx];
+  }
+
+  var best = null;
+  cands.forEach(function (bin) {
+    var vx = 0, vy = 0, m = 0;
+    for (var d2 = -2; d2 <= 2; d2++) {
+      var k3 = (bin + d2 + BINS) % BINS;
+      vx += sx[k3]; vy += sy[k3]; m += mass[k3];
+    }
+    var hue = circMeanDeg(vx, vy), band = [];
+    for (var i = 0; i < hues.length; i++) if (arcDist(hues[i], hue) <= 20) band.push(chromas[i]);
+    band.sort(function (p1, p2) { return p1 - p2; });
+    // croma dell'accento: 75-esimo percentile della sua banda, non la media.
+    // Una macchia accesa non viene cosi' annacquata dai pixel slavati che
+    // condividono la sua tinta.
+    var chroma = percentile(band, 0.75), share = m / total;
+    if (share < 0.05 || chroma < 0.03) return;
+    var score = share * Math.pow(chroma / CHROMA_REF, vividness);
+    if (!best || score > best.score) best = { hue: hue, chroma: chroma, share: share, score: score };
+  });
+  return best;
 }
 
 // Miscela verso la tinta base lungo l'arco corto: con BLEND = 0.3 un wallpaper
@@ -136,17 +280,19 @@ function blendHue(from, to, t) {
   return ((from + d * t) % 360 + 360) % 360;
 }
 
-var rep = SRC ? loadRep(SRC) : null;
-if (!rep) {
+var img = SRC ? loadPixels(SRC, SIDE) : null;
+if (!img) {
   // Niente stdout: chi ci chiama tiene la palette precedente, e i widget hanno
   // comunque il colore originale come fallback nel CSS.
   err('cosmoduck-theme: immagine non leggibile: ' + SRC);
   $.exit(1);
 }
 
-var dom = dominantHue(rep);
-var hue = dom ? blendHue(BASE_HUE, dom.hue, clamp(BLEND, 0, 1)) : BASE_HUE;
-var satScale = dom ? clamp(dom.sat / SAT_REF, SAT_FLOOR, SAT_CAP) : 1.0;
+var dom = dominantAccent(img.px, img.w, img.h, Math.max(VIVIDNESS, 0));
+var hue = dom ? blendHue(BASE_HUE, okHueToHslHue(dom.hue, dom.chroma), clamp(BLEND, 0, 1)) : BASE_HUE;
+// La scala segue la radice del rapporto di croma: fra pavimento e soffitto c'e'
+// poco spazio, e senza compressione meta' dei wallpaper ci finirebbe appiccicata.
+var satScale = dom ? clamp(Math.sqrt(dom.chroma / CHROMA_REF), SAT_FLOOR, SAT_CAP) : 1.0;
 satScale = 1 + (satScale - 1) * clamp(BLEND, 0, 1);
 
 var c = {};
@@ -157,8 +303,9 @@ Object.keys(TEMA).forEach(function (role) {
 out(JSON.stringify({
   source: SRC,
   hue: Math.round(hue),
-  wallpaperHue: dom ? Math.round(dom.hue) : null,
-  wallpaperSat: dom ? +dom.sat.toFixed(3) : null,
+  wallpaperHue: dom ? Math.round(okHueToHslHue(dom.hue, dom.chroma)) : null,
+  wallpaperChroma: dom ? +dom.chroma.toFixed(3) : null,
+  wallpaperShare: dom ? +dom.share.toFixed(2) : null,
   satScale: +satScale.toFixed(3),
   vars: {
     '--cd-accent':     hex(c.accent),
