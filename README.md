@@ -74,18 +74,29 @@ Made for a MacBook Air M‑series, tuned on a notch display.
   answers no: what little chroma it has is compression noise pointing everywhere at once. Those
   get a **greyscale theme**, because inventing a hue for them would be worse.
 
-  A flat wallpaper with a few bright specks in it — a logo, a lamp, a neon sign — gets read in
-  **two tones**, because that is how the picture itself is put together: a calm field with
-  coloured punctuation. The panels (glass, ink, shadows, body text) take the field's tint; the
-  marks on top of them (numbers, icons, arcs, borders) take the speck. Specks are hunted at four
-  times the resolution of the main pass and only among genuinely charged pixels: at 96×96 the four
-  dots of a logo are five pixels in total, and five pixels should not repaint a desktop.
+  A flat wallpaper with a few bright specks in it — a lamp, a neon sign — gets read in **two
+  tones**, because that is how the picture itself is put together: a calm field with coloured
+  punctuation. The panels (glass, ink, shadows) take the field's tint; the marks on top of them
+  (numbers, icons, arcs, borders) take the speck. Specks are hunted at four times the resolution
+  of the main pass and only among genuinely charged pixels: at 96×96 the four dots of a logo are
+  five pixels in total, and five pixels should not repaint a desktop.
+
+  When the flat wallpaper's subject has no colour at all — white lettering, a light logo — it is
+  still the thing your eye lands on, and a histogram of hues cannot see it, because white has no
+  hue. It is found by lightness instead: few pixels, neutral, far brighter than the rest. Then the
+  palette is read in three parts, the way the poster is: labels and secondary marks go
+  near-neutral like the lettering, panels keep the field's tint, and the accent alone goes to a
+  speck. One hue is passed over there — a red or magenta speck reads as an alarm on a dark
+  dashboard, so among thirty pixels' worth of candidates it loses to any other colour, though it
+  still wins if it is the only colour present. A red that *fills* the picture — a car, a sunset —
+  is unaffected: there, red is the picture.
 
   | The wallpaper | What the widgets do |
   |---|---|
   | has a colour | take it, saturation scaled by how charged it is |
   | is flat but tinted (Nord, a desaturated photo) | take the tint, at the saturation floor |
   | is flat with bright specks in it | panels from the field, accent from the brightest speck |
+  | is flat with a light subject (lettering, a logo) | labels near-neutral like the lettering, panels from the field, accent from a speck |
   | is black and white | go greyscale |
   | cannot be read (dynamic wallpaper, no permission) | keep the last good palette |
 

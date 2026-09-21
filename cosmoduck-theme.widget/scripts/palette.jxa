@@ -303,8 +303,18 @@ function describe(st, bin) {
 //
 // Da come rispondono escono quattro esiti: un colore solo, due toni (fondo per
 // i pannelli, macchia per l'accento), una velatura sola, o la scala di grigi.
-function accentOf(st, vividness, minArea) {
-  var best = null;
+// Rosso e magenta, su un cruscotto scuro, si leggono come un allarme: quando
+// l'accento viene da una macchia di trenta pixel non vale la pena far sembrare
+// la scrivania in avaria. Se pero' la macchia rossa e' l'unica cosa colorata
+// che c'e', rosso sia. Nel percorso normale -- un rosso che riempie la foto,
+// l'auto nel garage -- questa regola non entra: li' il rosso e' la foto.
+function isAlarmHue(okHue, chroma) {
+  var h = okHueToHslHue(okHue, Math.max(chroma, 0.06));
+  return h >= 340 || h <= 20;
+}
+
+function accentOf(st, vividness, minArea, avoidAlarm) {
+  var best = null, bestAlarm = null;
   peaks(st).forEach(function (bin) {
     var c = describe(st, bin);
     if (c.share < 0.05 || c.chroma < 0.03) return;
@@ -312,9 +322,34 @@ function accentOf(st, vividness, minArea) {
     // un colore vale solo se e' l'unico che c'e'.
     if (c.area < minArea && c.share < 0.6) return;
     c.score = c.share * Math.pow(c.chroma / CHROMA_REF, vividness);
+    if (avoidAlarm && isAlarmHue(c.hue, c.chroma)) {
+      if (!bestAlarm || c.score > bestAlarm.score) bestAlarm = c;
+      return;
+    }
     if (!best || c.score > best.score) best = c;
   });
-  return best;
+  return best || bestAlarm;
+}
+
+// Il soggetto di un wallpaper piatto puo' non avere colore: una scritta bianca,
+// un logo chiaro. E' la cosa che l'occhio guarda per prima, e un istogramma di
+// tinte non la vede, perche' il bianco non ha tinta. Si riconosce dal contrasto
+// di luminosita': pochi pixel, neutri, molto piu' chiari del resto.
+function lightSubject(px, W, H) {
+  var Ls = [], light = 0, lightL = 0, n = 0;
+  for (var y = 0; y < H; y++) for (var x = 0; x < W; x++) {
+    var p = (y * W + x) * 3, lab = oklab(px[p], px[p+1], px[p+2]);
+    var C = Math.sqrt(lab[1]*lab[1] + lab[2]*lab[2]);
+    n++; Ls.push(lab[0]);
+    if (C < 0.03 && lab[0] > 0.72) { light++; lightL += lab[0]; }
+  }
+  if (!n || !light) return null;
+  Ls.sort(function (a, b) { return a - b; });
+  var frac = light / n, mean = lightL / light, median = Ls[Math.floor(n / 2)];
+  // Fra lo 0.2% e il 10%: meno e' rumore, piu' e' il fondo stesso, non un
+  // soggetto. E deve staccare di netto dal resto dell'immagine.
+  if (frac < 0.002 || frac > 0.10 || mean - median < 0.35) return null;
+  return { frac: frac, lightness: mean, contrast: mean - median };
 }
 
 function fieldOf(px, W, H) {
@@ -330,13 +365,14 @@ function fieldOf(px, W, H) {
 // loadHi: funzione che rilegge il wallpaper piu' fitto, chiamata solo se serve
 function decide(px, W, H, vividness, loadHi, twoTone) {
   var strong = collect(px, W, H, 0.025);
-  var colour = strong ? accentOf(strong, vividness, 0.0025) : null;
+  var colour = strong ? accentOf(strong, vividness, 0.0025, false) : null;
   var flat   = !strong || strong.kept / strong.seen < 0.01;
 
   // Immagine con del colore vero: decide lui, come sempre.
-  if (colour && !flat) return { accent: colour, field: null, mode: 'colore' };
+  if (colour && !flat) return { accent: colour, field: null, subject: null, mode: 'colore' };
 
-  var field = flat ? fieldOf(px, W, H) : null;
+  var field   = flat ? fieldOf(px, W, H) : null;
+  var subject = flat ? lightSubject(px, W, H) : null;
 
   // Wallpaper piatto: le macchie si guardano da vicino prima di dargli retta.
   var speck = null;
@@ -350,18 +386,32 @@ function decide(px, W, H, vividness, loadHi, twoTone) {
       var st = collect(hi.px, hi.w, hi.h, 0.05);
       // 0.02% di 256x256 sono una ventina di pixel: pochi, ma a questa
       // risoluzione sono un campione, non un artefatto del ridimensionamento.
-      if (st) speck = accentOf(st, vividness, 0.0002);
+      if (st) speck = accentOf(st, vividness, 0.0002, true);
     }
   }
   if (!speck) speck = colour;
 
-  if (field && speck && twoTone) return { accent: speck, field: field, mode: 'due toni' };
-  if (field && !speck)           return { accent: null,  field: field, mode: 'velatura' };
-  if (field && speck)            return { accent: speck, field: null,  mode: 'colore' };
-  if (speck)                     return { accent: speck, field: null,  mode: 'colore' };
+  // Fondo piatto + soggetto chiaro: e' la composizione di un poster. I segni in
+  // primo piano prendono il chiaro quasi neutro della scritta, i pannelli la
+  // tinta del fondo, e una macchia -- se c'e' e non e' un allarme -- si tiene
+  // il solo accento. E' quello che si vede guardando il wallpaper: bianco su
+  // fondo, piu' un tocco.
+  if (field && subject)
+    return { accent: speck, field: field, subject: subject, mode: speck ? 'scritta' : 'scritta piana' };
+
+  if (field && speck && twoTone) return { accent: speck, field: field, subject: null, mode: 'due toni' };
+  if (field && !speck)           return { accent: null,  field: field, subject: null, mode: 'velatura' };
+  if (field && speck)            return { accent: speck, field: null,  subject: null, mode: 'colore' };
+  if (speck)                     return { accent: speck, field: null,  subject: null, mode: 'colore' };
   var quiet = fieldOf(px, W, H);
-  if (quiet)                     return { accent: null,  field: quiet, mode: 'velatura' };
-  return { accent: null, field: null, mode: 'grigi' };
+  if (quiet) {
+    // Anche qui il soggetto chiaro conta: una foto con poco colore ma una
+    // scritta bianca sopra resta un poster, non una velatura e basta.
+    var subj = lightSubject(px, W, H);
+    return { accent: null, field: quiet, subject: subj,
+             mode: subj ? 'scritta piana' : 'velatura' };
+  }
+  return { accent: null, field: null, subject: null, mode: 'grigi' };
 }
 
 // Miscela verso la tinta base lungo l'arco corto: con BLEND = 0.3 un wallpaper
@@ -411,13 +461,20 @@ if (accentHue === null && fieldHue === null) {
 
 // Chi prende la tinta dell'accento e chi quella del fondo. I primi sono i segni
 // in primo piano -- numeri, icone, archi, bordi -- i secondi sono il supporto:
-// vetro, inchiostro, ombre, e il testo di servizio, che deve stare calmo.
+// vetro, inchiostro, ombre.
 var ACCENT_ROLES = { accent: true, bright: true, mid: true, deep: true };
+// Col soggetto chiaro i ruoli diventano tre: l'accento vero e proprio resta
+// alla macchia, mentre i segni di contorno e il testo si schiariscono fino al
+// neutro, che e' il colore della scritta sul wallpaper.
+var LETTER_ROLES = { bright: true, mid: true, text: true };
+var LETTER_SAT   = 0.25;     // quanto resta della saturazione originale
 
 var c = {};
 Object.keys(TEMA).forEach(function (role) {
-  var onAccent = ACCENT_ROLES[role] === true;
-  var h = onAccent ? accentHue : fieldHue, sc = onAccent ? accentScale : fieldScale;
+  var h, sc;
+  if (res.subject && LETTER_ROLES[role]) { h = fieldHue;  sc = fieldScale * LETTER_SAT; }
+  else if (ACCENT_ROLES[role])           { h = accentHue; sc = accentScale; }
+  else                                   { h = fieldHue;  sc = fieldScale; }
   c[role] = hslToRgb(h + TEMA[role][2], clamp(TEMA[role][0] * sc, 0.05, 0.95), TEMA[role][1]);
 });
 
@@ -433,6 +490,9 @@ out(JSON.stringify({
                          share: +res.accent.share.toFixed(2) } : null,
   field: res.field ? { chroma: +res.field.chroma.toFixed(3),
                        agreement: +res.field.R.toFixed(2) } : null,
+  subject: res.subject ? { area: +(res.subject.frac * 100).toFixed(2),
+                           lightness: +res.subject.lightness.toFixed(2),
+                           contrast: +res.subject.contrast.toFixed(2) } : null,
   vars: {
     '--cd-accent':     hex(c.accent),
     '--cd-bright':     hex(c.bright),
