@@ -15,7 +15,7 @@ style: """
   top: 300px
   left: 168px
   width: 216px
-  height: 762px
+  height: 778px
   box-sizing: border-box
   overflow: hidden
   color: var(--cd-text, #C8D9E8)
@@ -182,15 +182,13 @@ style: """
     bottom: -0.16em
     font-size: 0.88em
 
-  .sysrow
-    display: flex
-    align-items: center
-    gap: 12px
   .rings
-    flex: 0 0 auto
+    display: block
+    width: 100%
+    height: 50px
   .rings circle
     fill: none
-    stroke-width: 3.5
+    stroke-width: 4
     stroke-linecap: round
   .rings .bg
     opacity: 0.22
@@ -200,32 +198,27 @@ style: """
     stroke: var(--cd-mid, #85C1E9)
   .r-disk
     stroke: var(--cd-deep, #2874A6)
-  .rings text
+  // La percentuale sta dentro il suo anello: e' il numero che l'anello
+  // disegna, e tenerlo altrove obbligava a rileggere due volte.
+  .rings .pct
     font-family: 'CDAbel', sans-serif
-    font-size: 7.5px
-    letter-spacing: 0.7px
-    fill: var(--cd-text, #C8D9E8)
-    opacity: 0.5
-    text-anchor: middle
-  .syslegend
-    flex: 1 1 auto
-  .syslegend .r
-    display: flex
-    align-items: baseline
-    font-size: 11px
-    line-height: 1.4
+    font-size: 12px
     font-weight: 700
-  .syslegend .k
-    width: 40px
-    flex: 0 0 auto
-    opacity: 0.85
-  .syslegend .v
-    color: var(--cd-accent, #5DADE2)
-  .syslegend .sub
-    font-size: 8px
-    letter-spacing: 1.2px
-    opacity: 0.45
-    margin: 4px 0 1px
+    fill: var(--cd-accent, #5DADE2)
+    text-anchor: middle
+  .syslabels
+    display: grid
+    grid-template-columns: repeat(3, 1fr)
+    text-align: center
+    margin-top: 4px
+  .syslabels .k
+    font-size: 8.5px
+    letter-spacing: 0.9px
+    opacity: 0.5
+  .syslabels .v
+    font-size: 10.5px
+    line-height: 1.3
+    color: var(--cd-mid, #85C1E9)
 
   .grid2
     display: grid
@@ -475,25 +468,22 @@ render: -> """
   <div class="fc" id="a-fc"></div>
 
   <div class="rule"></div>
-  <div class="sec"><span>SYSTEM</span><span class="st" id="a-sysst"></span></div>
-  <div class="sysrow">
-    <svg class="rings" width="88" height="38" viewBox="0 0 88 38">
-      <circle class="bg r-cpu"  cx="12" cy="13" r="10"></circle>
-      <circle class="fg r-cpu"  id="a-ring-cpu"  cx="12" cy="13" r="10" stroke-dasharray="0 62.83" transform="rotate(-90 12 13)"></circle>
-      <circle class="bg r-mem"  cx="44" cy="13" r="10"></circle>
-      <circle class="fg r-mem"  id="a-ring-mem"  cx="44" cy="13" r="10" stroke-dasharray="0 62.83" transform="rotate(-90 44 13)"></circle>
-      <circle class="bg r-disk" cx="76" cy="13" r="10"></circle>
-      <circle class="fg r-disk" id="a-ring-disk" cx="76" cy="13" r="10" stroke-dasharray="0 62.83" transform="rotate(-90 76 13)"></circle>
-      <text x="12" y="35">CPU</text>
-      <text x="44" y="35">RAM</text>
-      <text x="76" y="35">DISK</text>
-    </svg>
-    <div class="syslegend">
-      <div class="r"><span class="k">LOAD</span><span class="v" id="a-load">--%</span></div>
-      <div class="sub">FREE</div>
-      <div class="r"><span class="k">RAM</span><span class="v" id="a-ramfree">--</span></div>
-      <div class="r"><span class="k">DISK</span><span class="v" id="a-diskfree">--</span></div>
-    </div>
+  <div class="sec"><span>SYSTEM</span><span class="st">FREE</span></div>
+  <svg class="rings" viewBox="0 0 186 50">
+    <circle class="bg r-cpu"  cx="31" cy="25" r="20"></circle>
+    <circle class="fg r-cpu"  id="a-ring-cpu"  cx="31" cy="25" r="20" stroke-dasharray="0 125.66" transform="rotate(-90 31 25)"></circle>
+    <text class="pct" x="31" y="29" id="a-pcpu">--</text>
+    <circle class="bg r-mem"  cx="93" cy="25" r="20"></circle>
+    <circle class="fg r-mem"  id="a-ring-mem"  cx="93" cy="25" r="20" stroke-dasharray="0 125.66" transform="rotate(-90 93 25)"></circle>
+    <text class="pct" x="93" y="29" id="a-pmem">--</text>
+    <circle class="bg r-disk" cx="155" cy="25" r="20"></circle>
+    <circle class="fg r-disk" id="a-ring-disk" cx="155" cy="25" r="20" stroke-dasharray="0 125.66" transform="rotate(-90 155 25)"></circle>
+    <text class="pct" x="155" y="29" id="a-pdisk">--</text>
+  </svg>
+  <div class="syslabels">
+    <div><div class="k">CPU</div><div class="v">&nbsp;</div></div>
+    <div><div class="k">RAM</div><div class="v" id="a-ramfree">--</div></div>
+    <div><div class="k">DISK</div><div class="v" id="a-diskfree">--</div></div>
   </div>
 
   <div class="rule"></div>
@@ -765,11 +755,13 @@ update: (output, domEl) ->
   if sys
     ring = (id, pct) ->
       f = Math.max(0, Math.min(100, pct or 0)) / 100
-      $el.find(id).attr('stroke-dasharray', "#{(f * 62.83).toFixed(2)} 62.83")
+      $el.find(id).attr('stroke-dasharray', "#{(f * 125.66).toFixed(2)} 125.66")
     ring('#a-ring-cpu', sys.cpu)
     ring('#a-ring-mem', sys.mem)
     ring('#a-ring-disk', sys.diskData)
-    $el.find('#a-load').text("#{sys.cpu}%")
+    $el.find('#a-pcpu').text("#{sys.cpu}%")
+    $el.find('#a-pmem').text("#{sys.mem}%")
+    $el.find('#a-pdisk').text("#{sys.diskData}%")
     $el.find('#a-ramfree').text("#{sys.memFreeGB}GB")
     $el.find('#a-diskfree').text("#{sys.diskFreeGB}GB")
 
