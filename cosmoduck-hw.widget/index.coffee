@@ -292,8 +292,13 @@ update: (output, domEl) ->
   gauge('#bar-gpu', '#row-gpu', d.gputemp)
   $(domEl).find('#hw-cputemp').text(if d.cputemp? then "#{fmt(d.cputemp, 1)}°" else 'n/d')
   $(domEl).find('#hw-gputemp').text(if d.gputemp? then "#{fmt(d.gputemp, 1)}°" else 'n/d')
-  $(domEl).find('#hw-cpupwr').text(fmt(d.cpupwr, 2))
-  $(domEl).find('#hw-gpupwr').text(fmt(d.gpupwr, 2))
+  # Su parecchi Mac Apple Silicon macmon riporta cpu_power (e a volte ane/ram)
+  # fisso a zero: il canale non e' esposto. Un "0.00" li' e' una bugia -- sotto
+  # otto loop che saturano la CPU resta zero mentre i watt di sistema
+  # raddoppiano -- quindi quando il sistema consuma e il canale no, si dice n/d.
+  dead = (v) -> (not v?) or (v is 0 and d.syspwr? and d.syspwr > 1)
+  $(domEl).find('#hw-cpupwr').text(if dead(d.cpupwr) then 'n/d' else fmt(d.cpupwr, 2))
+  $(domEl).find('#hw-gpupwr').text(if dead(d.gpupwr) then 'n/d' else fmt(d.gpupwr, 2))
   $(domEl).find('#hw-syspwr').text(fmt(d.syspwr, 2))
 
   return unless d.syspwr? and not isNaN(d.syspwr)

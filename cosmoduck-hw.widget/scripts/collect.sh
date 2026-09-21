@@ -19,11 +19,30 @@ registry_mins() {
   pick() { printf '%s\n' "$reg" | grep -oE "\"$1\" = [0-9]+" | head -1 | grep -oE '[0-9]+$'; }
   valid() { case "$1" in ''|*[!0-9]*) return 1 ;; esac; [ "$1" -ge 1 ] && [ "$1" -le 1440 ]; }
   tr=$(pick TimeRemaining); tte=$(pick AvgTimeToEmpty); ttf=$(pick AvgTimeToFull)
-  if   valid "$tr";                                    then echo "$tr"
-  elif [ "$state" = discharging ] && valid "$tte";     then echo "$tte"
-  elif [ "$state" = charging ]    && valid "$ttf";     then echo "$ttf"
-  else echo null
+  if   valid "$tr";                                then echo "$tr"; return
+  elif [ "$state" = discharging ] && valid "$tte"; then echo "$tte"; return
+  elif [ "$state" = charging ]    && valid "$ttf"; then echo "$ttf"; return
   fi
+  # Anche i tre campi vanno e vengono: passano a 65535 per qualche giro e poi
+  # tornano, e la stima a schermo lampeggiava di conseguenza. Ma i mAh che
+  # restano e la corrente che scorre ci sono sempre, e la divisione la sappiamo
+  # fare: sotto i 200 mA pero' non si sta ne' caricando ne' scaricando davvero
+  # -- e' la carica in pausa -- e un rapporto del genere darebbe giorni.
+  local rem full amp
+  rem=$(printf '%s\n' "$reg"  | grep -o '"RemainingCapacity"=[0-9]*'   | head -1 | grep -oE '[0-9]+$')
+  full=$(printf '%s\n' "$reg" | grep -o '"FullChargeCapacity"=[0-9]*'  | head -1 | grep -oE '[0-9]+$')
+  amp=$(printf '%s\n' "$reg"  | grep -oE '"Amperage" = -?[0-9]+'       | head -1 | grep -oE '\-?[0-9]+$')
+  case "$rem$full$amp" in ''|*[!0-9-]*) echo null; return ;; esac
+  [ "$amp" -lt 0 ] && amp=$(( -amp ))
+  [ "$amp" -lt 200 ] && { echo null; return; }
+  if [ "$state" = charging ] && [ "$full" -gt "$rem" ]; then
+    mins=$(( (full - rem) * 60 / amp ))
+  elif [ "$state" = discharging ]; then
+    mins=$(( rem * 60 / amp ))
+  else
+    echo null; return
+  fi
+  valid "$mins" && echo "$mins" || echo null
 }
 
 battery_json() {
