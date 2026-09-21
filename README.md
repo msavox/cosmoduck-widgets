@@ -42,6 +42,19 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 | **Hardware Monitor** | CPU/GPU die temperature as gauges (via macmon), battery charge with time to empty or to full, CPU/GPU/System power in watts over the last two minutes' trace |
 | **Claude Code** | Model + reasoning effort in use, real session (5h) and weekly rate-limit usage with % fill bars and next reset time |
 | **Theme** | Nothing — invisible. Derives the accent palette from the wallpaper and publishes it to all the others |
+| **All in one** | Every card above except the clock and the calendar, in a single 330×450 panel |
+
+## All in one
+
+`cosmoduck-all.widget` puts weather, system rings, sensors and battery, network, processes and
+Claude usage into one panel, for anyone who would rather have a block than a column. The clock and
+the calendar stay out: they are a different kind of thing, and they read better on their own.
+
+It does not duplicate any collector — it calls the ones belonging to the individual widgets, in
+parallel, so a fix made there applies here too. That also means it needs those widget folders to
+be present, even if you drag the individual cards off-screen or keep them hidden; a folder that is
+missing simply leaves its section blank. One pass costs about a second of wall time, nearly all of
+it the network collector, which has to watch the counters for a second to know the rate.
 
 ## Configuration
 - **Accent from the wallpaper** — `cosmoduck-theme.widget` draws nothing. Every 5 s it finds the
