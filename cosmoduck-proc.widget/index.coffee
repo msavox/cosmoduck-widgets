@@ -75,7 +75,9 @@ style: """
     letter-spacing: 1.4px
     color: var(--cd-text, #C8D9E8)
     opacity: 0.45
-    margin: 0 18px 3px 0
+    // 18 del margine piu' i 5 di padding della riga sotto: cosi' la "%" cade
+    // sulla stessa colonna dei numeri invece che cinque punti piu' in la'.
+    margin: 0 23px 3px 0
   .rule
     height: 1px
     margin: 5px 18px 5px 0

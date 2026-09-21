@@ -80,7 +80,7 @@ style: """
     letter-spacing: 0.5px
   .trow
     display: flex
-    align-items: center
+    align-items: baseline
     gap: 7px
     margin-bottom: 3px
     padding-right: 18px
@@ -92,6 +92,7 @@ style: """
     opacity: 0.6
   .trow .bar
     flex: 1 1 auto
+    align-self: center
     height: 4px
     border-radius: 2px
     background: var(--cd-track, rgba(31,58,95,0.55))
