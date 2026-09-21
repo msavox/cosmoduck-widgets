@@ -53,7 +53,7 @@ style: """
   top: 18px
   left: 12px
   width: 216px
-  height: 778px
+  height: 804px
   box-sizing: border-box
   overflow: hidden
   color: var(--cd-text, #C8D9E8)
@@ -366,33 +366,44 @@ style: """
     flex: 0 0 auto
     color: var(--cd-accent, #5DADE2)
 
+  // Le due quote stanno una per riga, come i sensori: affiancate su una riga
+  // sola restavano due barrette da trenta punti e dei numeri da nove, che a
+  // schermo non si leggevano. Qui la barra prende tutta la larghezza e il
+  // numero ha la stessa taglia degli altri valori della card.
   .cc
     display: flex
-    align-items: baseline
-    gap: 10px
-    font-size: 9.5px
+    flex-direction: column
+    gap: 5px
   .cc .q
     display: flex
-    align-items: baseline
-    gap: 5px
-    opacity: 0.9
+    align-items: center
+    gap: 6px
   .cc .q b
-    font-weight: 400
-    font-size: 8px
-    letter-spacing: 1px
-    opacity: 0.55
-  .cc .mini
     width: 30px
-    height: 3px
-    border-radius: 2px
+    flex: 0 0 auto
+    font-weight: 400
+    font-size: 9px
+    letter-spacing: 0.5px
+    opacity: 0.6
+  .cc .mini
+    flex: 1 1 auto
+    height: 6px
+    border-radius: 3px
     background: var(--cd-track, rgba(31,58,95,0.55))
     overflow: hidden
-    align-self: center
   .cc .mini i
     display: block
     height: 100%
     width: 0
+    border-radius: 3px
     background: var(--cd-accent, #5DADE2)
+    transition: width 0.45s ease-out
+  .cc .v
+    width: 40px
+    flex: 0 0 auto
+    text-align: right
+    font-size: 12px
+    color: var(--cd-accent, #5DADE2)
 
   .cal-hdr
     display: flex
@@ -553,8 +564,8 @@ render: -> """
   <div class="rule"></div>
   <div class="sec"><span>CLAUDE</span><span class="st" id="a-ccmodel">—</span></div>
   <div class="cc">
-    <span class="q"><b>SESS</b><span class="mini"><i id="a-ccsbar"></i></span><span id="a-ccs">--</span></span>
-    <span class="q"><b>WEEK</b><span class="mini"><i id="a-ccwbar"></i></span><span id="a-ccw">--</span></span>
+    <span class="q"><b>SESS</b><span class="mini"><i id="a-ccsbar"></i></span><span class="v" id="a-ccs">--</span></span>
+    <span class="q"><b>WEEK</b><span class="mini"><i id="a-ccwbar"></i></span><span class="v" id="a-ccw">--</span></span>
   </div>
 
   <div class="rule"></div>

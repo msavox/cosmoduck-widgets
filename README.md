@@ -42,7 +42,7 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 | **Hardware Monitor** | CPU/GPU die temperature as gauges (via macmon), battery charge with time to empty or to full, CPU/GPU/System power in watts over the last two minutes' trace |
 | **Claude Code** | Model + reasoning effort in use, real session (5h) and weekly rate-limit usage with % fill bars and next reset time |
 | **Theme** | Nothing — invisible. Derives the accent palette from the wallpaper and publishes it to all the others |
-| **All in one** | Every card above except the clock, calendar included, in a single 216×738 panel |
+| **All in one** | Every card above except the clock, calendar included, in a single 216×804 panel |
 
 ## All in one
 
