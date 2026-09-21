@@ -78,16 +78,27 @@ style: """
   .txt
     position: absolute
     left: 73px
-    top: 81px
+    top: 75px
   .txt .r
     display: flex
     align-items: baseline
-    font-size: 13px
+    font-size: 12px
     line-height: 1.0
     font-weight: 700
-    margin-bottom: 2px
+    margin-bottom: 3px
+  // "FREE" fa da intestazione alle due righe sotto: RAM e disco mostrano lo
+  // spazio che resta, non quello occupato, e senza dirlo il numero si legge
+  // volentieri al contrario.
+  .txt .sec
+    font-size: 8px
+    letter-spacing: 1.2px
+    font-weight: 700
+    line-height: 1.0
+    color: var(--cd-text, #C8D9E8)
+    opacity: 0.45
+    margin: 3px 0 3px
   .txt .r .k
-    width: 30px
+    width: 28px
     margin-right: -2px
     flex: 0 0 auto
     color: var(--cd-text, #C8D9E8)
@@ -123,9 +134,10 @@ render: -> """
     <circle class="fg r-data" id="data-fg" cx="41" cy="103" r="13" stroke-dasharray="0 81.68" transform="rotate(-90 41 103)"></circle>
   </svg>
   <div class="txt">
-    <div class="r"><span class="k">CPU</span><span class="v" id="v-cpu">--%</span></div>
+    <div class="r"><span class="k">LOAD</span><span class="v" id="v-cpu">--%</span></div>
+    <div class="sec">FREE</div>
     <div class="r"><span class="k">RAM</span><span class="v" id="v-ram">--GB</span></div>
-    <div class="r"><span class="k">Disk</span><span class="v" id="v-disk">--GB</span></div>
+    <div class="r"><span class="k">DISK</span><span class="v" id="v-disk">--GB</span></div>
   </div>
   <div class="pos-indicator" id="coords">T: 0 L: 0</div>
 """

@@ -127,6 +127,25 @@ style: """
     font-size: 14px
     line-height: 1.4
     color: var(--cd-mid, #85C1E9)
+  // Feather non ha un "sole dietro le nuvole", e "poche nubi" (codice 02) non
+  // e' ne' sereno ne' coperto: si compone con i due glifi che ci sono.
+  .mix
+    position: relative
+    display: inline-block
+    width: 1em
+    height: 1em
+    vertical-align: -0.12em
+  .mix .s
+    position: absolute
+    left: -0.16em
+    top: -0.30em
+    font-size: 0.72em
+    opacity: 0.9
+  .mix .c
+    position: absolute
+    right: -0.16em
+    bottom: -0.16em
+    font-size: 0.88em
   .fc .hi
     font-size: 9px
     line-height: 1.25
@@ -240,7 +259,7 @@ update: (output, domEl) ->
   # Codepoint nel font Feather in dotazione (vedi fonts/feather.ttf).
   icons =
     "01d": 0xE9E3, "01n": 0xE9A3
-    "02d": 0xE93A, "02n": 0xE93A, "03d": 0xE93A, "03n": 0xE93A
+    "03d": 0xE93A, "03n": 0xE93A
     "04d": 0xE93A, "04n": 0xE93A
     "09d": 0xE93B, "09n": 0xE93B, "10d": 0xE93E, "10n": 0xE93E
     "11d": 0xE93C, "11n": 0xE93C, "13d": 0xE93F, "13n": 0xE93F
@@ -249,8 +268,19 @@ update: (output, domEl) ->
   DROP = 0xE95A       # goccia
   UP   = 0xE914       # freccia su
   DOWN = 0xE90C       # freccia giu'
-  glyph = (code) -> String.fromCharCode(icons[code] or 0xE93A)
-  $(domEl).find('#wicon').text(glyph(w.weather[0].icon))
+  SUN   = 0xE9E3
+  MOON  = 0xE9A3
+  CLOUD = 0xE93A
+  ch = (cp) -> String.fromCharCode(cp)
+  # "02" e' poche nubi: mostrarlo come coperto e' quello che rendeva la
+  # settimana tutta uguale anche quando uguale non era.
+  glyph = (code) ->
+    if code is '02d' or code is '02n'
+      back = if code is '02d' then SUN else MOON
+      """<span class="mix"><span class="s">#{ch(back)}</span><span class="c">#{ch(CLOUD)}</span></span>"""
+    else
+      ch(icons[code] or CLOUD)
+  $(domEl).find('#wicon').html(glyph(w.weather[0].icon))
   $(domEl).find('#wtemp').text("#{Math.round(w.main.temp)}°")
   $(domEl).find('#wcity').text(w.name)
   # La minima di oggi puo' essere gia' passata: l'API gratuita da' solo le ore
