@@ -36,15 +36,15 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 | **Clock** | `HH` over `MM` (two‑layer, colour‑inverted) + seconds |
 | **Calendar** | Month grid with today highlighted and an ISO week-number (`CW`) column; `‹ ›` to browse months, double-click a day to open it in Calendar.app |
 | **Disk / System** | Ring gauges for CPU, RAM, disk + legend with CPU %, free RAM and free disk |
-| **Weather** | OpenWeatherMap current conditions with a Feather glyph icon |
+| **Weather** | OpenWeatherMap: current conditions, wind and humidity as glyphs, and the next five days |
 | **Network** | Wi‑Fi name + down/up speed with bar sparklines |
 | **Processes** | Top 3 CPU and top 3 RAM processes |
-| **Hardware Monitor** | CPU/GPU temperature + CPU/GPU/System power (via macmon) |
+| **Hardware Monitor** | CPU/GPU die temperature as gauges, CPU/GPU/System power, and the last two minutes of system draw as a sparkline (via macmon) |
 | **Claude Code** | Model + reasoning effort in use, real session (5h) and weekly rate-limit usage with % fill bars and next reset time |
 | **Theme** | Nothing — invisible. Derives the accent palette from the wallpaper and publishes it to all the others |
 
 ## Configuration
-- **Accent from the wallpaper** — `cosmoduck-theme.widget` draws nothing. Every 30 s it finds the
+- **Accent from the wallpaper** — `cosmoduck-theme.widget` draws nothing. Every 5 s it finds the
   wallpaper in use, samples it, and publishes a palette as CSS variables (`--cd-accent`,
   `--cd-bright`, `--cd-mid`, `--cd-deep`, `--cd-shadow`, `--cd-text`, `--cd-ink`, `--cd-glass` and
   the translucent `--cd-border` / `--cd-fill` / `--cd-rule` / `--cd-track`). Übersicht puts every
@@ -65,8 +65,29 @@ Made for a MacBook Air M‑series, tuned on a notch display.
   straddles so a colour sitting on a boundary is not split in half. Then every peak of that
   histogram is a candidate, and the winner is the one whose *extent weighted by charge* is
   highest: a small vivid flower beats a large washed-out sky, which is how a person would read the
-  picture. A wallpaper with no colour to give — black and white, or a tint so faint that using it
-  would mean inventing it — keeps the Cosmoduck blue instead of amplifying its compression noise.
+  picture.
+
+  If nothing in the picture is colourful enough to qualify, it gets looked at a second time, with
+  faint tints allowed, and asked a different question: does the *whole* picture agree on one hue?
+  A desaturated photograph or a Nord-palette wallpaper answers yes — every pixel points the same
+  way — and gets that hue, quietly, at the saturation floor. A true black-and-white picture
+  answers no: what little chroma it has is compression noise pointing everywhere at once. Those
+  get a **greyscale theme**, because inventing a hue for them would be worse.
+
+  A flat wallpaper with a few bright specks in it — a logo, a lamp, a neon sign — gets read in
+  **two tones**, because that is how the picture itself is put together: a calm field with
+  coloured punctuation. The panels (glass, ink, shadows, body text) take the field's tint; the
+  marks on top of them (numbers, icons, arcs, borders) take the speck. Specks are hunted at four
+  times the resolution of the main pass and only among genuinely charged pixels: at 96×96 the four
+  dots of a logo are five pixels in total, and five pixels should not repaint a desktop.
+
+  | The wallpaper | What the widgets do |
+  |---|---|
+  | has a colour | take it, saturation scaled by how charged it is |
+  | is flat but tinted (Nord, a desaturated photo) | take the tint, at the saturation floor |
+  | is flat with bright specks in it | panels from the field, accent from the brightest speck |
+  | is black and white | go greyscale |
+  | cannot be read (dynamic wallpaper, no permission) | keep the last good palette |
 
   Tune it at the top of `cosmoduck-theme.widget/scripts/collect.sh`:
 
@@ -75,9 +96,10 @@ Made for a MacBook Air M‑series, tuned on a notch display.
   | `BLEND` | `1.0` | how much the wallpaper decides. `1` adopts its hue outright, `0.3` nudges the Cosmoduck blue a few dozen degrees, `0` leaves the original theme untouched |
   | `SAT_FLOOR` | `0.75` | saturation floor, as a fraction of the original. Without it a grey wallpaper produces grey widgets |
   | `VIVIDNESS` | `1.5` | how the winner is chosen among the hues present. `0` gives it to the widest one, `1.5` lets a charged colour outweigh a dull backdrop, `3` lets one bright patch set the theme |
+  | `TWO_TONE` | `1` | on a flat wallpaper with bright specks, let the panels keep the field's tint and give the accent to a speck. `0` keeps one hue for everything |
 
-  All three also read from the environment, as `COSMODUCK_THEME_BLEND`, `COSMODUCK_THEME_SAT_FLOOR`
-  and `COSMODUCK_THEME_VIVIDNESS`.
+  All four also read from the environment, as `COSMODUCK_THEME_BLEND`, `COSMODUCK_THEME_SAT_FLOOR`,
+  `COSMODUCK_THEME_VIVIDNESS` and `COSMODUCK_THEME_TWO_TONE`.
 
   The wallpaper is read from macOS's own registry
   (`~/Library/Application Support/com.apple.wallpaper/Store/Index.plist`), which needs **no
@@ -86,9 +108,8 @@ Made for a MacBook Air M‑series, tuned on a notch display.
   tenths of a second, so the result is cached in `~/.cache/cosmoduck/` and recomputed only when
   the wallpaper, its mtime or the tuning changes.
 
-  Three known limits: the wallpaper can differ per display and per Space, while the palette is one
-  per screen — the most recently set wallpaper wins; the widgets pick up a change at the next 30 s
-  refresh, not the instant you set it; and a *dynamic* wallpaper (the `hello …` ones, `.madesktop`)
+  Two known limits: the wallpaper can differ per display and per Space, while the palette is one
+  per screen — the most recently set wallpaper wins; and a *dynamic* wallpaper (the `hello …` ones, `.madesktop`)
   is not an image file, so it cannot be read — the last good palette stays, and
   `~/.cache/cosmoduck/theme.log` says so.
 - **Weather** — needs a free [OpenWeatherMap](https://openweathermap.org/api) key. Keep it out of
@@ -104,6 +125,11 @@ Made for a MacBook Air M‑series, tuned on a notch display.
   `cosmoduck-weather.widget/scripts/weather.sh` (find yours on
   [openweathermap.org](https://openweathermap.org/find)). Without a key the widget keeps showing
   the last cached reading, then falls back to placeholders.
+
+  Two calls, cached apart: current conditions age out after 10 minutes, the five-day forecast
+  after an hour — it moves far more slowly and is not worth a call every time. The forecast comes
+  in three-hour steps, which the script groups into local days, keeping each day's low, high and
+  the icon from the middle of the day.
   It ships with a demo key and city (Como, IT) and `lang=en`.
 - **Wi‑Fi name** — macOS 14+ hides the SSID (`<redacted>`) unless the app has **Location**
   permission. Grant Location to Übersicht to show the real network name; otherwise the widget

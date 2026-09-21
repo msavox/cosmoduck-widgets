@@ -68,29 +68,98 @@ style: """
     opacity: 1
 
   .hdr
-    font-size: 11px
-    font-weight: 700
-    color: var(--cd-text, #C8D9E8)
-    margin-bottom: 6px
-  .hrow
     display: flex
-    font-size: 11px
-    font-weight: 700
-    margin-bottom: 4px
-  .hrow .k
-    width: 74px
+    align-items: baseline
+    justify-content: space-between
+    font-size: 9px
+    letter-spacing: 1.3px
+    color: var(--cd-text, #C8D9E8)
+    opacity: 0.5
+    margin: 0 18px 7px 0
+  .hdr .st
+    letter-spacing: 0.5px
+  .trow
+    display: flex
+    align-items: center
+    gap: 7px
+    margin-bottom: 6px
+    padding-right: 18px
+  .trow .k
+    width: 26px
     flex: 0 0 auto
+    font-size: 10px
+    letter-spacing: 0.6px
+    opacity: 0.6
+  .trow .bar
+    flex: 1 1 auto
+    height: 4px
+    border-radius: 2px
+    background: var(--cd-track, rgba(31,58,95,0.55))
+    overflow: hidden
+  .trow .bar i
+    display: block
+    height: 100%
+    width: 0
+    border-radius: 2px
+    background: var(--cd-accent, #5DADE2)
+    transition: width 0.45s ease-out, background-color 0.45s
+  .trow.hot .bar i
+    background: var(--cd-bright, #AED6F1)
+  .trow .v
+    width: 40px
+    flex: 0 0 auto
+    text-align: right
+    font-size: 11px
+    color: var(--cd-accent, #5DADE2)
+  .rule
+    height: 1px
+    margin: 2px 18px 7px 0
+    background: var(--cd-rule, rgba(93,173,226,0.14))
+  .pw
+    display: grid
+    grid-template-columns: repeat(3, 1fr)
+    padding-right: 18px
+    margin-bottom: 5px
+  .pw .l
+    font-size: 8px
+    letter-spacing: 0.7px
+    opacity: 0.45
+  .pw .n
+    font-size: 11px
+    line-height: 1.2
+    color: var(--cd-mid, #85C1E9)
+  .spark
+    padding-right: 18px
+    height: 20px
+  .spark svg
+    width: 100%
+    height: 20px
+    display: block
+  .spark polyline
+    fill: none
+    stroke: var(--cd-accent, #5DADE2)
+    stroke-width: 1.2
+    stroke-linejoin: round
+    stroke-linecap: round
+    opacity: 0.85
+  .spark polygon
+    fill: var(--cd-fill, rgba(93,173,226,0.18))
+    stroke: none
 """
 
 render: -> """
   <style>@font-face{font-family:'CDAbel';src:url('cosmoduck-hw.widget/fonts/Abel-Regular.ttf') format('truetype');}</style>
   <div class="lock-btn" id="lock-toggle"></div>
-  <div class="hdr">HARDWARE MONITOR</div>
-  <div class="hrow"><span class="k">CPU Temp :</span><span class="v" id="hw-cputemp">--</span></div>
-  <div class="hrow"><span class="k">GPU Temp :</span><span class="v" id="hw-gputemp">--</span></div>
-  <div class="hrow"><span class="k">CPU Power :</span><span class="v" id="hw-cpupwr">--</span></div>
-  <div class="hrow"><span class="k">GPU Power :</span><span class="v" id="hw-gpupwr">--</span></div>
-  <div class="hrow"><span class="k">Sys Power :</span><span class="v" id="hw-syspwr">--</span></div>
+  <div class="hdr"><span>HARDWARE</span><span class="st" id="hw-state"></span></div>
+  <div class="trow" id="row-cpu"><span class="k">CPU</span><span class="bar"><i id="bar-cpu"></i></span><span class="v" id="hw-cputemp">--</span></div>
+  <div class="trow" id="row-gpu"><span class="k">GPU</span><span class="bar"><i id="bar-gpu"></i></span><span class="v" id="hw-gputemp">--</span></div>
+  <div class="rule"></div>
+  <div class="pw">
+    <div><div class="l">CPU W</div><div class="n" id="hw-cpupwr">--</div></div>
+    <div><div class="l">GPU W</div><div class="n" id="hw-gpupwr">--</div></div>
+    <div><div class="l">SYS W</div><div class="n" id="hw-syspwr">--</div></div>
+  </div>
+  <div class="spark" id="hw-spark"></div>
   <div class="pos-indicator" id="coords">T: 0 L: 0</div>
 """
 
@@ -167,14 +236,61 @@ update: (output, domEl) ->
     d = JSON.parse(output)
   catch e
     return
-  fmt = (v, unit, dec) ->
-    if v? and v != null and not isNaN(v) then "#{(+v).toFixed(dec)}#{unit}" else "n/d"
+  fmt = (v, dec) ->
+    if v? and not isNaN(v) then (+v).toFixed(dec) else "n/d"
+
   if d.nomacmon
-    $(domEl).find('#hw-cputemp').text('macmon?')
-    $(domEl).find('#hw-gputemp,#hw-cpupwr,#hw-gpupwr,#hw-syspwr').text('n/d')
+    $(domEl).find('#hw-state').text('macmon assente')
+    $(domEl).find('#hw-cputemp,#hw-gputemp').text('n/d')
+    $(domEl).find('#hw-cpupwr,#hw-gpupwr,#hw-syspwr').text('n/d')
+    $(domEl).find('#bar-cpu,#bar-gpu').css('width', '0%')
     return
-  $(domEl).find('#hw-cputemp').text(fmt(d.cputemp, '°C', 1))
-  $(domEl).find('#hw-gputemp').text(fmt(d.gputemp, '°C', 1))
-  $(domEl).find('#hw-cpupwr').text(fmt(d.cpupwr, ' W', 2))
-  $(domEl).find('#hw-gpupwr').text(fmt(d.gpupwr, ' W', 2))
-  $(domEl).find('#hw-syspwr').text(fmt(d.syspwr, ' W', 2))
+  $(domEl).find('#hw-state').text('')
+
+  # Le temperature sono grandezze limitate, e una barra le racconta meglio di un
+  # numero: 30 gradi e' un portatile fermo, 95 e' il punto in cui rallenta.
+  gauge = (sel, row, v) ->
+    if v? and not isNaN(v)
+      pct = Math.max(0, Math.min(100, (v - 30) / 65 * 100))
+      $(domEl).find(sel).css('width', "#{pct.toFixed(1)}%")
+      $(domEl).find(row).toggleClass('hot', v >= 80)
+    else
+      $(domEl).find(sel).css('width', '0%')
+
+  gauge('#bar-cpu', '#row-cpu', d.cputemp)
+  gauge('#bar-gpu', '#row-gpu', d.gputemp)
+  $(domEl).find('#hw-cputemp').text(if d.cputemp? then "#{fmt(d.cputemp, 1)}°" else 'n/d')
+  $(domEl).find('#hw-gputemp').text(if d.gputemp? then "#{fmt(d.gputemp, 1)}°" else 'n/d')
+  $(domEl).find('#hw-cpupwr').text(fmt(d.cpupwr, 2))
+  $(domEl).find('#hw-gpupwr').text(fmt(d.gpupwr, 2))
+  $(domEl).find('#hw-syspwr').text(fmt(d.syspwr, 2))
+
+  return unless d.syspwr? and not isNaN(d.syspwr)
+  # Lo storico sta appeso all'elemento e non in una variabile di modulo: il file
+  # del widget e' un unico object literal, e un'assegnazione nuda in mezzo lo
+  # chiuderebbe li' -- Ubersicht si ritroverebbe un widget senza command ne'
+  # render, cioe' un riquadro vuoto. Appeso all'elemento e' anche piu' corretto:
+  # Ubersicht monta un'istanza per schermo.
+  HISTORY_MAX = 30
+  hist = $(domEl).data('syshist') or []
+  hist.push(+d.syspwr)
+  hist.shift() while hist.length > HISTORY_MAX
+  $(domEl).data('syshist', hist)
+  return if hist.length < 2
+  # Scala sul massimo visto nella finestra, con un minimo di 5 W: senza, il
+  # rumore di una macchina ferma riempirebbe tutta l'altezza.
+  W = 100
+  H = 20
+  top = Math.max(5, Math.max(hist...))
+  step = W / (HISTORY_MAX - 1)
+  pts = (for v, i in hist
+    x = (i + HISTORY_MAX - hist.length) * step
+    y = H - 1 - (v / top) * (H - 2)
+    "#{x.toFixed(1)},#{y.toFixed(1)}").join(' ')
+  first = pts.split(' ')[0].split(',')[0]
+  last = pts.split(' ')[hist.length - 1].split(',')[0]
+  svg = """<svg viewBox="0 0 #{W} #{H}" preserveAspectRatio="none">
+      <polygon points="#{first},#{H} #{pts} #{last},#{H}"></polygon>
+      <polyline points="#{pts}"></polyline>
+    </svg>"""
+  $(domEl).find('#hw-spark').html(svg)
