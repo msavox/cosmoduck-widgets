@@ -38,8 +38,8 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 | **Disk / System** | Ring gauges for CPU, RAM, disk + legend with CPU %, free RAM and free disk |
 | **Weather** | OpenWeatherMap: current conditions, wind and humidity as glyphs, and the next five days |
 | **Network** | Wi‑Fi name + down/up speed with bar sparklines |
-| **Processes** | Top 3 CPU and top 3 RAM processes |
-| **Hardware Monitor** | CPU/GPU die temperature as gauges, CPU/GPU/System power, and the last two minutes of system draw as a sparkline (via macmon) |
+| **Processes** | Top 3 by CPU and top 3 by memory, each row carrying its own bar |
+| **Hardware Monitor** | CPU/GPU die temperature as gauges, CPU/GPU/System power in watts, and the last two minutes of system draw as a sparkline (via macmon) |
 | **Claude Code** | Model + reasoning effort in use, real session (5h) and weekly rate-limit usage with % fill bars and next reset time |
 | **Theme** | Nothing — invisible. Derives the accent palette from the wallpaper and publishes it to all the others |
 

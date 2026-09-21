@@ -67,36 +67,64 @@ style: """
   .dragging .pos-indicator
     opacity: 1
 
-  .hdr
-    font-size: 11px
-    font-weight: 700
-    color: var(--cd-text, #C8D9E8)
-    margin-bottom: 3px
-  .hdr2
-    margin-top: 8px
-  .prow
+  .sec
     display: flex
-    font-size: 11px
-    font-weight: 700
+    align-items: baseline
+    justify-content: space-between
+    font-size: 8.5px
+    letter-spacing: 1.4px
+    color: var(--cd-text, #C8D9E8)
+    opacity: 0.45
+    margin: 0 18px 5px 0
+  .rule
+    height: 1px
+    margin: 7px 18px 7px 0
+    background: var(--cd-rule, rgba(93,173,226,0.14))
+  .prow
+    position: relative
+    display: flex
+    align-items: baseline
+    justify-content: space-between
+    font-size: 10px
+    line-height: 1.45
+    margin-right: 18px
+    padding: 0 5px
+    border-radius: 3px
+    overflow: hidden
+  .prow .fill
+    position: absolute
+    top: 0
+    bottom: 0
+    left: 0
+    width: 0
+    border-radius: 3px
+    background: var(--cd-fill, rgba(93,173,226,0.18))
+    transition: width 0.4s ease-out
   .prow .n
-    width: 74px
+    position: relative
     overflow: hidden
     white-space: nowrap
+    text-overflow: ellipsis
+    padding-right: 6px
+    color: var(--cd-text, #C8D9E8)
   .prow .p
+    position: relative
+    flex: 0 0 auto
     color: var(--cd-accent, #5DADE2)
 """
 
 render: -> """
   <style>@font-face{font-family:'CDAbel';src:url('cosmoduck-proc.widget/fonts/Abel-Regular.ttf') format('truetype');}</style>
   <div class="lock-btn" id="lock-toggle"></div>
-  <div class="hdr">TOP CPU PROCESSES</div>
-  <div class="prow"><span class="n" id="cn0"></span><span class="p" id="cp0"></span></div>
-  <div class="prow"><span class="n" id="cn1"></span><span class="p" id="cp1"></span></div>
-  <div class="prow"><span class="n" id="cn2"></span><span class="p" id="cp2"></span></div>
-  <div class="hdr hdr2">TOP RAM PROCESSES</div>
-  <div class="prow"><span class="n" id="rn0"></span><span class="p" id="rp0"></span></div>
-  <div class="prow"><span class="n" id="rn1"></span><span class="p" id="rp1"></span></div>
-  <div class="prow"><span class="n" id="rn2"></span><span class="p" id="rp2"></span></div>
+  <div class="sec"><span>CPU</span><span>%</span></div>
+  <div class="prow"><span class="fill" id="cf0"></span><span class="n" id="cn0"></span><span class="p" id="cp0"></span></div>
+  <div class="prow"><span class="fill" id="cf1"></span><span class="n" id="cn1"></span><span class="p" id="cp1"></span></div>
+  <div class="prow"><span class="fill" id="cf2"></span><span class="n" id="cn2"></span><span class="p" id="cp2"></span></div>
+  <div class="rule"></div>
+  <div class="sec"><span>MEMORY</span><span>%</span></div>
+  <div class="prow"><span class="fill" id="rf0"></span><span class="n" id="rn0"></span><span class="p" id="rp0"></span></div>
+  <div class="prow"><span class="fill" id="rf1"></span><span class="n" id="rn1"></span><span class="p" id="rp1"></span></div>
+  <div class="prow"><span class="fill" id="rf2"></span><span class="n" id="rn2"></span><span class="p" id="rp2"></span></div>
   <div class="pos-indicator" id="coords">T: 0 L: 0</div>
 """
 
@@ -173,10 +201,17 @@ update: (output, domEl) ->
     d = JSON.parse(output)
   catch e
     return
-  fill = (arr, pfx) ->
+  # La barra dietro ogni riga e' relativa al primo della lista, non a un 100%
+  # assoluto: pcpu su otto core arriva a 800, e la domanda qui e' "chi sta
+  # mangiando la macchina", che e' un confronto fra questi tre. Il minimo tiene
+  # basse le barre quando non sta succedendo niente.
+  fill = (arr, pfx, floor) ->
+    top = Math.max(floor, Math.max(0, (parseFloat(p.p) or 0 for p in arr)...))
     for i in [0..2]
       p = arr[i]
+      v = if p then (parseFloat(p.p) or 0) else 0
       $(domEl).find("##{pfx}n#{i}").text(if p then p.n else "")
-      $(domEl).find("##{pfx}p#{i}").text(if p then "#{p.p}%" else "")
-  fill((d.topcpu or []), 'c')
-  fill((d.topram or []), 'r')
+      $(domEl).find("##{pfx}p#{i}").text(if p then p.p else "")
+      $(domEl).find("##{pfx}f#{i}").css('width', if p then "#{(v / top * 100).toFixed(1)}%" else '0')
+  fill((d.topcpu or []), 'c', 25)
+  fill((d.topram or []), 'r', 8)

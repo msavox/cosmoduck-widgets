@@ -67,16 +67,16 @@ style: """
   .dragging .pos-indicator
     opacity: 1
 
-  .hdr
+  .sec
     display: flex
     align-items: baseline
     justify-content: space-between
-    font-size: 9px
-    letter-spacing: 1.3px
+    font-size: 8.5px
+    letter-spacing: 1.4px
     color: var(--cd-text, #C8D9E8)
-    opacity: 0.5
-    margin: 0 18px 7px 0
-  .hdr .st
+    opacity: 0.45
+    margin: 0 18px 6px 0
+  .sec .st
     letter-spacing: 0.5px
   .trow
     display: flex
@@ -113,7 +113,7 @@ style: """
     color: var(--cd-accent, #5DADE2)
   .rule
     height: 1px
-    margin: 2px 18px 7px 0
+    margin: 3px 18px 8px 0
     background: var(--cd-rule, rgba(93,173,226,0.14))
   .pw
     display: grid
@@ -150,14 +150,15 @@ style: """
 render: -> """
   <style>@font-face{font-family:'CDAbel';src:url('cosmoduck-hw.widget/fonts/Abel-Regular.ttf') format('truetype');}</style>
   <div class="lock-btn" id="lock-toggle"></div>
-  <div class="hdr"><span>HARDWARE</span><span class="st" id="hw-state"></span></div>
+  <div class="sec"><span>TEMPERATURE</span><span class="st" id="hw-state"></span></div>
   <div class="trow" id="row-cpu"><span class="k">CPU</span><span class="bar"><i id="bar-cpu"></i></span><span class="v" id="hw-cputemp">--</span></div>
   <div class="trow" id="row-gpu"><span class="k">GPU</span><span class="bar"><i id="bar-gpu"></i></span><span class="v" id="hw-gputemp">--</span></div>
   <div class="rule"></div>
+  <div class="sec"><span>POWER</span><span class="st">WATT</span></div>
   <div class="pw">
-    <div><div class="l">CPU W</div><div class="n" id="hw-cpupwr">--</div></div>
-    <div><div class="l">GPU W</div><div class="n" id="hw-gpupwr">--</div></div>
-    <div><div class="l">SYS W</div><div class="n" id="hw-syspwr">--</div></div>
+    <div><div class="l">CPU</div><div class="n" id="hw-cpupwr">--</div></div>
+    <div><div class="l">GPU</div><div class="n" id="hw-gpupwr">--</div></div>
+    <div><div class="l">SYS</div><div class="n" id="hw-syspwr">--</div></div>
   </div>
   <div class="spark" id="hw-spark"></div>
   <div class="pos-indicator" id="coords">T: 0 L: 0</div>
