@@ -75,10 +75,17 @@ case "$SRC" in
   file://*) FILE=$(urldecode "${SRC#file://}") ;;
   *)        FILE=$SRC ;;
 esac
-# Se Ubersicht non ha il permesso su questa cartella (Impostazioni di Sistema >
-# Privacy e sicurezza > File e cartelle) il file risulta illeggibile da qui pur
-# esistendo.
-[ -r "$FILE" ] || give_up "wallpaper non leggibile: $FILE (permessi di Ubersicht sulla cartella?)"
+# Due guai diversi che si somigliano. Il file puo' non esserci piu': il registro
+# di macOS conserva il percorso di quando l'hai impostato, e se poi lo sposti o
+# lo cancelli resta li' a puntare al vuoto. Oppure c'e' ma non si legge, ed e'
+# il caso dei permessi mancanti su quella cartella. Distinguerli serve, perche'
+# la cura e' diversa: reimpostare lo sfondo nel primo caso, dare il permesso a
+# Ubersicht nel secondo.
+if [ ! -e "$FILE" ]; then
+  give_up "wallpaper sparito dal disco: $FILE (spostato o cancellato dopo essere stato impostato; reimposta lo sfondo)"
+elif [ ! -r "$FILE" ]; then
+  give_up "wallpaper non leggibile: $FILE (permessi di Ubersicht su quella cartella?)"
+fi
 
 # Decodificare il wallpaper costa un paio di decimi e non cambia finche' non
 # cambia lui: si ricalcola solo quando path, mtime o taratura si muovono.
