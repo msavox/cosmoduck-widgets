@@ -19,7 +19,10 @@ POS = do ->
   try
     top = localStorage.getItem('cosmoduck-all_pos_top2')
     left = localStorage.getItem('cosmoduck-all_pos_left2')
-    if top and left then "top: #{top}\n  left: #{left}" else null
+    # Senza rientro: nei blocchi """ CoffeeScript toglie l'indentazione comune,
+    # quindi quello che interpoliamo deve partire da colonna zero come il resto,
+    # o Stylus vede un rientro inatteso e si ferma con la card in errore.
+    if top and left then "top: #{top}\nleft: #{left}" else null
   catch
     null
 
@@ -27,7 +30,7 @@ command: "bash cosmoduck-all.widget/scripts/collect.sh"
 refreshFrequency: 5000
 
 style: """
-  #{POS or "top: 300px\n  left: 168px"}
+  #{POS or "top: 300px\nleft: 168px"}
   width: 216px
   height: 778px
   box-sizing: border-box
