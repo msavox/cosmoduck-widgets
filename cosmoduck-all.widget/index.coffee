@@ -15,7 +15,7 @@ style: """
   top: 300px
   left: 168px
   width: 216px
-  height: 760px
+  height: 762px
   box-sizing: border-box
   overflow: hidden
   color: var(--cd-text, #C8D9E8)
@@ -117,9 +117,20 @@ style: """
     font-size: 26px
     line-height: 1
     color: var(--cd-accent, #5DADE2)
+  // Massima e minima di oggi: centrate sul blocco della temperatura invece di
+  // appoggiarsi alla sua linea di base, che le faceva pendere in basso. La
+  // freccia sta in una colonnina di larghezza fissa, cosi' i due numeri si
+  // incolonnano invece di ballare a seconda della freccia.
   .wx-now .mm
+    align-self: center
+    font-size: 11px
+    line-height: 1.3
+    opacity: 0.75
+  .wx-now .mm .g
+    font-family: 'CDFeather'
+    display: inline-block
+    width: 12px
     font-size: 9px
-    line-height: 1.25
     opacity: 0.7
   .wx-stats
     display: flex
@@ -452,7 +463,10 @@ render: -> """
   <div class="wx-now">
     <span class="ico" id="a-wicon"></span>
     <span class="t" id="a-wtemp">--°</span>
-    <span class="mm"><div id="a-wmax">--</div><div id="a-wmin">--</div></span>
+    <span class="mm">
+      <div><span class="g" id="a-gmax"></span><span id="a-wmax">--</span></div>
+      <div><span class="g" id="a-gmin"></span><span id="a-wmin">--</span></div>
+    </span>
   </div>
   <div class="wx-stats">
     <span><span class="gly" id="a-gwind"></span><span id="a-wind">--</span></span>
@@ -737,9 +751,10 @@ update: (output, domEl) ->
     $el.find('#a-wind').text("#{Math.round(w.wind.speed * 10) / 10} m/s")
     $el.find('#a-hum').text("#{w.main.humidity}%")
     today = wx.today or { min: Math.round(w.main.temp), max: Math.round(w.main.temp) }
-    $el.find('#a-wmax').text("#{ch(UP)} #{today.max}°")
-    $el.find('#a-wmin').text("#{ch(DOWN)} #{today.min}°")
-    $el.find('#a-wmax,#a-wmin').css('font-family', "'CDFeather', 'CDAbel', sans-serif")
+    $el.find('#a-gmax').text(ch(UP))
+    $el.find('#a-gmin').text(ch(DOWN))
+    $el.find('#a-wmax').text("#{today.max}°")
+    $el.find('#a-wmin').text("#{today.min}°")
     days = for day in (wx.forecast or [])
       """<div><div class="d">#{day.dow}</div><div class="i">#{glyph(day.icon)}</div>""" +
       """<div class="hi">#{day.max}°</div><div class="lo">#{day.min}°</div></div>"""
