@@ -15,7 +15,7 @@ style: """
   top: 300px
   left: 168px
   width: 216px
-  height: 738px
+  height: 760px
   box-sizing: border-box
   overflow: hidden
   color: var(--cd-text, #C8D9E8)
@@ -85,7 +85,7 @@ style: """
     display: flex
     align-items: baseline
     justify-content: space-between
-    font-size: 8.5px
+    font-size: 9.5px
     letter-spacing: 1.4px
     opacity: 0.45
     margin-bottom: 4px
@@ -136,20 +136,22 @@ style: """
     text-align: center
     max-width: 100%
   .fc .d
-    font-size: 8px
+    font-size: 9px
     opacity: 0.5
+  // La striscia occupa tutta la larghezza della card, e a 188 punti ogni giorno
+  // ne ha quasi 38: icone e temperature possono permettersi di crescere.
   .fc .i
     font-family: 'CDFeather'
-    font-size: 13px
+    font-size: 17px
     line-height: 1.45
     color: var(--cd-mid, #85C1E9)
   .fc .hi
-    font-size: 8.5px
-    line-height: 1.2
+    font-size: 10px
+    line-height: 1.25
     color: var(--cd-accent, #5DADE2)
   .fc .lo
-    font-size: 8.5px
-    line-height: 1.2
+    font-size: 10px
+    line-height: 1.25
     opacity: 0.45
   .mix
     position: relative

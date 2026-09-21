@@ -90,7 +90,7 @@ style: """
   // spazio che resta, non quello occupato, e senza dirlo il numero si legge
   // volentieri al contrario.
   .txt .sec
-    font-size: 8px
+    font-size: 9px
     letter-spacing: 1.2px
     font-weight: 700
     line-height: 1.0

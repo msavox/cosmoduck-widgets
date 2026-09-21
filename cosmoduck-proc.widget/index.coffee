@@ -71,7 +71,7 @@ style: """
     display: flex
     align-items: baseline
     justify-content: space-between
-    font-size: 8.5px
+    font-size: 9.5px
     letter-spacing: 1.4px
     color: var(--cd-text, #C8D9E8)
     opacity: 0.45
