@@ -8,12 +8,26 @@
 # I dati arrivano da scripts/collect.sh, che richiama i collector dei singoli
 # widget in parallelo: la logica di raccolta resta scritta una volta sola.
 
+# La posizione si legge qui, non in afterRender. Ubersicht mette la card nel
+# DOM con questo CSS e chiama afterRender solo quando il comando ritorna: il
+# nostro collector ci mette un secondo, e per quel secondo la card resterebbe
+# dove dice lo style invece che dove l'hai trascinata. Letta adesso, entra
+# subito nella prima pennellata.
+# NB: l'assegnazione sta PRIMA dell'oggetto del widget. In mezzo alle chiavi
+# chiuderebbe l'object literal e Ubersicht si ritroverebbe mezza card.
+POS = do ->
+  try
+    top = localStorage.getItem('cosmoduck-all_pos_top2')
+    left = localStorage.getItem('cosmoduck-all_pos_left2')
+    if top and left then "top: #{top}\n  left: #{left}" else null
+  catch
+    null
+
 command: "bash cosmoduck-all.widget/scripts/collect.sh"
 refreshFrequency: 5000
 
 style: """
-  top: 300px
-  left: 168px
+  #{POS or "top: 300px\n  left: 168px"}
   width: 216px
   height: 778px
   box-sizing: border-box

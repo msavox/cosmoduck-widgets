@@ -62,7 +62,13 @@ wallpaper_from_store() {
 # Ripiego: chiede al Finder. Esatto, ma la prima volta fa comparire il prompt
 # "Ubersicht vuole controllare System Events".
 wallpaper_from_applescript() {
-  osascript -e 'tell application "System Events" to tell current desktop to get picture as text' 2>/dev/null
+  local p
+  p=$(osascript -e 'tell application "System Events" to tell current desktop to get picture as text' 2>/dev/null)
+  # Quando non sa rispondere AppleScript restituisce la stringa "missing value",
+  # che non e' un percorso: presa per buona finiva nel messaggio d'errore come
+  # se fosse un file, ed era incomprensibile.
+  case "$p" in ''|'missing value') return 1 ;; esac
+  printf '%s' "$p"
 }
 
 urldecode() { local s="${1//+/ }"; printf '%b' "${s//%/\\x}"; }
@@ -71,24 +77,63 @@ SRC=$(wallpaper_from_store 2>>"$LOG")
 [ -z "$SRC" ] && SRC=$(wallpaper_from_applescript)
 [ -z "$SRC" ] && give_up "wallpaper non trovato: ne' nel registro di macOS ne' via System Events"
 
-case "$SRC" in
-  file://*) FILE=$(urldecode "${SRC#file://}") ;;
-  *)        FILE=$SRC ;;
-esac
-# Due guai diversi che si somigliano. Il file puo' non esserci piu': il registro
-# di macOS conserva il percorso di quando l'hai impostato, e se poi lo sposti o
-# lo cancelli resta li' a puntare al vuoto. Oppure c'e' ma non si legge, ed e'
-# il caso dei permessi mancanti su quella cartella. Distinguerli serve, perche'
-# la cura e' diversa: reimpostare lo sfondo nel primo caso, dare il permesso a
-# Ubersicht nel secondo.
+to_path() {
+  case "$1" in
+    file://*) urldecode "${1#file://}" ;;
+    *)        printf '%s' "$1" ;;
+  esac
+}
+FILE=$(to_path "$SRC")
+
+# Il registro conserva il percorso di quando hai impostato lo sfondo. Se poi il
+# file si sposta -- una cartella di wallpaper riordinata, per dire -- la voce
+# resta li' a puntare al vuoto mentre macOS continua a mostrare l'immagine dalla
+# sua cache, e il tema sembra rotto quando invece sta solo leggendo la verita'.
+# Prima di arrendersi si chiede a System Events, che ogni tanto ha un percorso
+# piu' fresco di quello del registro.
 if [ ! -e "$FILE" ]; then
+  ALT=$(wallpaper_from_applescript)
+  ALTFILE=$(to_path "$ALT")
+  if [ -n "$ALTFILE" ] && [ -e "$ALTFILE" ]; then
+    note "registro fermo su un percorso morto ($FILE): uso quello di System Events"
+    SRC=$ALT
+    FILE=$ALTFILE
+  fi
+fi
+
+# Ultima spiaggia: lo stesso nome file da qualche altra parte sotto ~/Pictures.
+# Riordinare le cartelle dei wallpaper e' proprio il caso in cui il percorso
+# registrato muore mentre l'immagine e' ancora li', due cartelle piu' in la'.
+# Costa una ventina di millisecondi e si paga solo quando il percorso e' morto;
+# le librerie di Foto si saltano, che dentro hanno decine di migliaia di file.
+find_moved() {
+  find "$HOME/Pictures" -maxdepth 4 \
+       \( -name '*.photoslibrary' -o -name '*.photolibrary' -o -name 'Photo Booth Library' \) -prune \
+       -o -type f -name "$(basename "$1")" -print 2>/dev/null | head -1
+}
+
+if [ ! -e "$FILE" ]; then
+  MOVED=$(find_moved "$FILE")
+  if [ -n "$MOVED" ] && [ -r "$MOVED" ]; then
+    note "wallpaper spostato: il registro dice $FILE, l'ho trovato in $MOVED"
+    SRC=$MOVED
+    FILE=$MOVED
+  fi
+fi
+
+# Sparito e illeggibile si somigliano ma vogliono cure diverse: reimpostare lo
+# sfondo, oppure dare a Ubersicht il permesso su quella cartella. Si distinguono
+# guardando la cartella: se non si riesce nemmeno a leggerla, e' un permesso.
+DIR_OF=$(dirname "$FILE")
+if [ ! -e "$FILE" ]; then
+  if [ -d "$DIR_OF" ] && [ ! -r "$DIR_OF" ]; then
+    give_up "cartella del wallpaper non accessibile: $DIR_OF (permessi di Ubersicht?)"
+  fi
   give_up "wallpaper sparito dal disco: $FILE (spostato o cancellato dopo essere stato impostato; reimposta lo sfondo)"
 elif [ ! -r "$FILE" ]; then
   give_up "wallpaper non leggibile: $FILE (permessi di Ubersicht su quella cartella?)"
 fi
 
-# Decodificare il wallpaper costa un paio di decimi e non cambia finche' non
-# cambia lui: si ricalcola solo quando path, mtime o taratura si muovono.
 # Nella chiave c'e' anche l'mtime dell'estrattore: se non ci fosse, aggiornare
 # il widget lascerebbe a schermo la palette calcolata dalla versione precedente
 # finche' non cambia il wallpaper.
