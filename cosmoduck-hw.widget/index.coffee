@@ -19,7 +19,7 @@ style: """
   border-radius: 22px
   border: 1px solid var(--cd-border, rgba(93,173,226,0.22))
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07)
-  padding: 0 0 0 20px
+  padding: 11px 0 11px 20px
   display: flex
   flex-direction: column
   justify-content: center
@@ -75,14 +75,14 @@ style: """
     letter-spacing: 1.4px
     color: var(--cd-text, #C8D9E8)
     opacity: 0.45
-    margin: 0 18px 6px 0
+    margin: 0 18px 4px 0
   .sec .st
     letter-spacing: 0.5px
   .trow
     display: flex
     align-items: center
     gap: 7px
-    margin-bottom: 6px
+    margin-bottom: 4px
     padding-right: 18px
   .trow .k
     width: 26px
@@ -113,13 +113,13 @@ style: """
     color: var(--cd-accent, #5DADE2)
   .rule
     height: 1px
-    margin: 3px 18px 8px 0
+    margin: 1px 18px 5px 0
     background: var(--cd-rule, rgba(93,173,226,0.14))
   .pw
     display: grid
     grid-template-columns: repeat(3, 1fr)
     padding-right: 18px
-    margin-bottom: 5px
+    margin-bottom: 2px
   .pw .l
     font-size: 8px
     letter-spacing: 0.7px
@@ -130,10 +130,10 @@ style: """
     color: var(--cd-mid, #85C1E9)
   .spark
     padding-right: 18px
-    height: 20px
+    height: 16px
   .spark svg
     width: 100%
-    height: 20px
+    height: 16px
     display: block
   .spark polyline
     fill: none

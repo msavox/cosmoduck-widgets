@@ -19,7 +19,7 @@ style: """
   border-radius: 22px
   border: 1px solid var(--cd-border, rgba(93,173,226,0.22))
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07)
-  padding: 0 0 0 20px
+  padding: 10px 0 10px 20px
   display: flex
   flex-direction: column
   justify-content: center
@@ -75,10 +75,10 @@ style: """
     letter-spacing: 1.4px
     color: var(--cd-text, #C8D9E8)
     opacity: 0.45
-    margin: 0 18px 5px 0
+    margin: 0 18px 3px 0
   .rule
     height: 1px
-    margin: 7px 18px 7px 0
+    margin: 5px 18px 5px 0
     background: var(--cd-rule, rgba(93,173,226,0.14))
   .prow
     position: relative
@@ -86,7 +86,7 @@ style: """
     align-items: baseline
     justify-content: space-between
     font-size: 10px
-    line-height: 1.45
+    line-height: 1.3
     margin-right: 18px
     padding: 0 5px
     border-radius: 3px
