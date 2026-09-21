@@ -8,29 +8,50 @@
 # I dati arrivano da scripts/collect.sh, che richiama i collector dei singoli
 # widget in parallelo: la logica di raccolta resta scritta una volta sola.
 
-# La posizione si legge qui, non in afterRender. Ubersicht mette la card nel
-# DOM con questo CSS e chiama afterRender solo quando il comando ritorna: il
-# nostro collector ci mette un secondo, e per quel secondo la card resterebbe
-# dove dice lo style invece che dove l'hai trascinata. Letta adesso, entra
-# subito nella prima pennellata.
-# NB: l'assegnazione sta PRIMA dell'oggetto del widget. In mezzo alle chiavi
-# chiuderebbe l'object literal e Ubersicht si ritroverebbe mezza card.
-POS = do ->
+# Rimettere la card dove l'hai lasciata, prima che si veda altrove.
+#
+# Nota sui limiti: il default qui sotto e' l'angolo in alto a sinistra, come le
+# altre card del set. Non e' un dettaglio estetico -- e' il posto in cui la card
+# si vede per la prima frazione di secondo, prima che qualcuno possa spostarla,
+# e piu' e' vicino a dove la tieni meno si nota.
+#
+# Lo style qui sotto e' statico: lo compila il server con Stylus e non sa niente
+# di dove hai trascinato la card, che vive nel localStorage del browser. E
+# afterRender -- dove la posizione viene ripristinata -- Ubersicht lo chiama
+# solo quando il comando ritorna, che per questo pannello e' un secondo dopo:
+# in quel secondo la card sta alla posizione di default, e si vede.
+#
+# Questo blocco invece gira nel browser appena la pagina carica il modulo, cioe'
+# prima che il comando parta. L'elemento magari non c'e' ancora, quindi lo si
+# aspetta a piccoli passi per un secondo scarso. Si scrive sullo stile inline,
+# non in un foglio: cosi' il trascinamento, che scrive negli stessi campi,
+# continua a funzionare.
+do ->
   try
-    top = localStorage.getItem('cosmoduck-all_pos_top2')
-    left = localStorage.getItem('cosmoduck-all_pos_left2')
-    # Senza rientro: nei blocchi """ CoffeeScript toglie l'indentazione comune,
-    # quindi quello che interpoliamo deve partire da colonna zero come il resto,
-    # o Stylus vede un rientro inatteso e si ferma con la card in errore.
-    if top and left then "top: #{top}\nleft: #{left}" else null
-  catch
-    null
+    savedTop = localStorage.getItem('cosmoduck-all_pos_top2')
+    savedLeft = localStorage.getItem('cosmoduck-all_pos_left2')
+    return unless savedTop and savedLeft
+    tries = 0
+    place = ->
+      el = document.querySelector('[id^="cosmoduck-all-widget"]')
+      if el
+        el.style.top = savedTop
+        el.style.left = savedLeft
+        return
+      tries += 1
+      setTimeout(place, 25) if tries < 40
+    place()
+  catch error
+    # Nessun browser: e' il server che sta leggendo il file, e li' non c'e'
+    # niente da posizionare.
+    return
 
 command: "bash cosmoduck-all.widget/scripts/collect.sh"
 refreshFrequency: 5000
 
 style: """
-  #{POS or "top: 300px\nleft: 168px"}
+  top: 18px
+  left: 12px
   width: 216px
   height: 778px
   box-sizing: border-box
