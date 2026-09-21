@@ -19,7 +19,7 @@ style: """
   border-radius: 22px
   border: 1px solid var(--cd-border, rgba(93,173,226,0.22))
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07)
-  padding: 0 0 0 18px
+  padding: 0 0 0 16px
   display: flex
   flex-direction: column
   justify-content: center
@@ -69,29 +69,72 @@ style: """
 
   .row
     display: flex
-    align-items: center
-    gap: 10px
+    align-items: baseline
+    gap: 9px
   .ico
     font-family: 'CDFeather'
-    font-size: 30px
+    font-size: 27px
+    line-height: 1
     color: var(--cd-text, #C8D9E8)
+    transform: translateY(3px)
   .temp
     font-family: 'CDBebas', sans-serif
-    font-size: 32px
+    font-size: 31px
+    line-height: 1
     color: var(--cd-accent, #5DADE2)
-  .dots
-    font-size: 12px
-    letter-spacing: 1px
-    margin: 2px 0
+  .today
+    font-size: 9px
+    line-height: 1.3
+    opacity: 0.7
+    align-self: center
+    margin-left: 1px
+  .today .g
+    font-family: 'CDFeather'
+    font-size: 8px
+    margin-right: 2px
     opacity: 0.8
   .city
-    font-size: 15px
+    font-size: 14px
+    line-height: 1.2
     color: var(--cd-accent, #5DADE2)
     font-weight: 700
-  .desc
-    font-size: 14px
-  .sub
+  .stats
+    display: flex
+    gap: 12px
     font-size: 11px
+    line-height: 1.4
+    opacity: 0.85
+  .stats .g
+    font-family: 'CDFeather'
+    font-size: 11px
+    color: var(--cd-mid, #85C1E9)
+    margin-right: 3px
+  .rule
+    height: 1px
+    margin: 4px 14px 4px 0
+    background: var(--cd-rule, rgba(93,173,226,0.14))
+  .fc
+    display: grid
+    grid-template-columns: repeat(5, 1fr)
+    text-align: center
+    margin-right: 14px
+  .fc .d
+    font-size: 9px
+    line-height: 1.2
+    opacity: 0.5
+  .fc .i
+    font-family: 'CDFeather'
+    font-size: 14px
+    line-height: 1.4
+    color: var(--cd-mid, #85C1E9)
+  .fc .hi
+    font-size: 9px
+    line-height: 1.25
+    color: var(--cd-accent, #5DADE2)
+  .fc .lo
+    font-size: 9px
+    line-height: 1.25
+    opacity: 0.45
 """
 
 render: -> """
@@ -101,12 +144,17 @@ render: -> """
     @font-face{font-family:'CDAbel';src:url('cosmoduck-weather.widget/fonts/Abel-Regular.ttf') format('truetype');}
   </style>
   <div class="lock-btn" id="lock-toggle"></div>
-  <div class="row"><span class="ico" id="wicon"></span><span class="temp" id="wtemp">--°C</span></div>
-  <div class="dots">............</div>
+  <div class="row">
+    <span class="ico" id="wicon"></span><span class="temp" id="wtemp">--°</span>
+    <span class="today"><div><span class="g" id="gup"></span><span id="wmax">--°</span></div><div><span class="g" id="gdn"></span><span id="wmin">--°</span></div></span>
+  </div>
   <div class="city" id="wcity">—</div>
-  <div class="desc" id="wdesc"></div>
-  <div class="sub" id="wwind">Wind speed : --m/s</div>
-  <div class="sub" id="whum">Humidity : --%</div>
+  <div class="stats">
+    <span><span class="g" id="gwind"></span><span id="wwind">--</span></span>
+    <span><span class="g" id="ghum"></span><span id="whum">--</span></span>
+  </div>
+  <div class="rule"></div>
+  <div class="fc" id="wfc"></div>
   <div class="pos-indicator" id="coords">T: 0 L: 0</div>
 """
 
@@ -180,10 +228,16 @@ afterRender: (domEl) ->
 
 update: (output, domEl) ->
   try
-    w = JSON.parse(output)
+    data = JSON.parse(output)
   catch e
     return
+  return unless data
+  # Lo script emette { current, forecast }. Una cache vecchia poteva essere il
+  # JSON nudo di OWM: in quel caso lo si prende com'e' e si sta senza previsioni.
+  w = data.current or data
+  fc = data.forecast or []
   return unless w and w.main and w.weather and w.weather[0]
+  # Codepoint nel font Feather in dotazione (vedi fonts/feather.ttf).
   icons =
     "01d": 0xE9E3, "01n": 0xE9A3
     "02d": 0xE93A, "02n": 0xE93A, "03d": 0xE93A, "03n": 0xE93A
@@ -191,12 +245,26 @@ update: (output, domEl) ->
     "09d": 0xE93B, "09n": 0xE93B, "10d": 0xE93E, "10n": 0xE93E
     "11d": 0xE93C, "11n": 0xE93C, "13d": 0xE93F, "13n": 0xE93F
     "50d": 0xEA10, "50n": 0xEA10
-  code = w.weather[0].icon
-  cp = icons[code] or 0xE93A
-  desc = (w.weather[0].description or "").replace /\b\w/g, (c) -> c.toUpperCase()
-  $(domEl).find('#wicon').text(String.fromCharCode(cp))
-  $(domEl).find('#wtemp').text("#{Math.round(w.main.temp)}°C")
+  WIND = 0xEA10       # tre linee mosse
+  DROP = 0xE95A       # goccia
+  UP   = 0xE914       # freccia su
+  DOWN = 0xE90C       # freccia giu'
+  glyph = (code) -> String.fromCharCode(icons[code] or 0xE93A)
+  $(domEl).find('#wicon').text(glyph(w.weather[0].icon))
+  $(domEl).find('#wtemp').text("#{Math.round(w.main.temp)}°")
   $(domEl).find('#wcity').text(w.name)
-  $(domEl).find('#wdesc').text(desc)
-  $(domEl).find('#wwind').text("Wind speed : #{w.wind.speed}m/s")
-  $(domEl).find('#whum').text("Humidity : #{w.main.humidity}%")
+  # La minima di oggi puo' essere gia' passata: l'API gratuita da' solo le ore
+  # che restano, quindi qui "oggi" vuol dire da adesso a mezzanotte.
+  today = data.today or { min: Math.round(w.main.temp), max: Math.round(w.main.temp) }
+  $(domEl).find('#gup').text(String.fromCharCode(UP))
+  $(domEl).find('#gdn').text(String.fromCharCode(DOWN))
+  $(domEl).find('#wmax').text("#{today.max}°")
+  $(domEl).find('#wmin').text("#{today.min}°")
+  $(domEl).find('#gwind').text(String.fromCharCode(WIND))
+  $(domEl).find('#ghum').text(String.fromCharCode(DROP))
+  $(domEl).find('#wwind').text("#{Math.round(w.wind.speed * 10) / 10} m/s")
+  $(domEl).find('#whum').text("#{w.main.humidity}%")
+  days = for d in fc
+    """<div><div class="d">#{d.dow}</div><div class="i">#{glyph(d.icon)}</div>""" +
+    """<div class="hi">#{d.max}°</div><div class="lo">#{d.min}°</div></div>"""
+  $(domEl).find('#wfc').html(days.join(''))
