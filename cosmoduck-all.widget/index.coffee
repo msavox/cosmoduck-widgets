@@ -52,8 +52,8 @@ refreshFrequency: 5000
 style: """
   top: 18px
   left: 12px
-  width: 216px
-  height: 804px
+  width: 238px
+  height: 884px
   box-sizing: border-box
   overflow: hidden
   color: var(--cd-text, #C8D9E8)
@@ -61,10 +61,10 @@ style: """
   background: var(--cd-glass, rgba(16,24,34,0.55))
   -webkit-backdrop-filter: blur(12px) saturate(1.2)
   backdrop-filter: blur(12px) saturate(1.2)
-  border-radius: 22px
+  border-radius: 24.2px
   border: 1px solid var(--cd-border, rgba(93,173,226,0.22))
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.07)
-  padding: 12px 14px
+  padding: 13.2px 15.4px
   display: flex
   flex-direction: column
   justify-content: center
@@ -84,11 +84,11 @@ style: """
 
   .lock-btn
     position: absolute
-    top: 10px
-    right: 9px
+    top: 11px
+    right: 9.9px
     color: var(--cd-bright, #AED6F1)
-    width: 15px
-    height: 15px
+    width: 16.5px
+    height: 16.5px
     opacity: 0
     cursor: pointer
     transition: opacity 0.2s
@@ -98,20 +98,20 @@ style: """
   .lock-btn:hover
     opacity: 1
   .lock-btn svg
-    width: 15px
-    height: 15px
+    width: 16.5px
+    height: 16.5px
     display: block
 
   .pos-indicator
     position: absolute
-    bottom: 2px
+    bottom: 2.2px
     left: 50%
     transform: translateX(-50%)
     background: rgba(0,0,0,0.6)
     color: #fff
-    font-size: 8px
-    padding: 2px 8px
-    border-radius: 10px
+    font-size: 8.8px
+    padding: 2.2px 8.8px
+    border-radius: 11px
     opacity: 0
     transition: opacity 0.3s
     pointer-events: none
@@ -123,17 +123,17 @@ style: """
     display: flex
     align-items: baseline
     justify-content: space-between
-    font-size: 9.5px
-    letter-spacing: 1.4px
+    font-size: 10.5px
+    letter-spacing: 1.5px
     opacity: 0.45
-    margin-bottom: 4px
+    margin-bottom: 4.4px
   .sec .st
-    letter-spacing: 0.5px
+    letter-spacing: 0.6px
   .sec2
-    margin-top: 6px
+    margin-top: 6.6px
   .rule
     height: 1px
-    margin: 6px 0
+    margin: 6.6px 0
     background: var(--cd-rule, rgba(93,173,226,0.14))
   .gly
     font-family: 'CDFeather'
@@ -148,25 +148,25 @@ style: """
   .wx
     display: grid
     grid-template-columns: auto auto 1fr
-    column-gap: 12px
-    row-gap: 3px
+    column-gap: 13.2px
+    row-gap: 3.3px
     align-items: center
-    margin-bottom: 4px
+    margin-bottom: 4.4px
   .wx .now
     grid-column: 1
     grid-row: 1
     display: flex
     align-items: baseline
-    gap: 8px
+    gap: 8.8px
   .wx .ico
     font-family: 'CDFeather'
-    font-size: 22px
+    font-size: 24.2px
     line-height: 1
     color: var(--cd-text, #C8D9E8)
-    transform: translateY(2px)
+    transform: translateY(2.2px)
   .wx .t
     font-family: 'CDBebas', sans-serif
-    font-size: 26px
+    font-size: 28.6px
     line-height: 1
     color: var(--cd-accent, #5DADE2)
   // Massima e minima di oggi: centrate sul blocco della temperatura invece di
@@ -176,14 +176,14 @@ style: """
   .wx .mm
     grid-column: 2
     grid-row: 1
-    font-size: 11px
+    font-size: 12.1px
     line-height: 1.3
     opacity: 0.75
   .wx .mm .g
     font-family: 'CDFeather'
     display: inline-block
-    width: 12px
-    font-size: 9px
+    width: 13.2px
+    font-size: 9.9px
     opacity: 0.7
   // Come nella card meteo da sola: non la scritta piccola e spaziata
   // dell'intestazione, ma il nome scritto per esteso, nel colore d'accento.
@@ -192,7 +192,7 @@ style: """
     grid-row: 1 / span 2
     align-self: start
     text-align: left
-    font-size: 14px
+    font-size: 15.4px
     line-height: 1.2
     font-weight: 700
     color: var(--cd-accent, #5DADE2)
@@ -206,33 +206,33 @@ style: """
     grid-column: 2
     grid-row: 2
   .wx .wind, .wx .hum
-    font-size: 10px
+    font-size: 11px
     opacity: 0.85
   .wx .wind .gly, .wx .hum .gly
-    font-size: 10px
+    font-size: 11px
     display: inline-block
-    width: 12px
+    width: 13.2px
   .fc
     display: grid
     grid-template-columns: repeat(5, 1fr)
     text-align: center
     max-width: 100%
   .fc .d
-    font-size: 9px
+    font-size: 9.9px
     opacity: 0.5
-  // La striscia occupa tutta la larghezza della card, e a 188 punti ogni giorno
-  // ne ha quasi 38: icone e temperature possono permettersi di crescere.
+  // La striscia occupa tutta la larghezza della card, e a 207 punti ogni giorno
+  // ne ha piu' di 41: icone e temperature possono permettersi di crescere.
   .fc .i
     font-family: 'CDFeather'
-    font-size: 17px
+    font-size: 18.7px
     line-height: 1.45
     color: var(--cd-mid, #85C1E9)
   .fc .hi
-    font-size: 10px
+    font-size: 11px
     line-height: 1.25
     color: var(--cd-accent, #5DADE2)
   .fc .lo
-    font-size: 10px
+    font-size: 11px
     line-height: 1.25
     opacity: 0.45
   .mix
@@ -256,7 +256,7 @@ style: """
   .rings
     display: block
     width: 100%
-    height: 50px
+    height: 55px
   .rings circle
     fill: none
     stroke-width: 4
@@ -281,83 +281,83 @@ style: """
     display: grid
     grid-template-columns: repeat(3, 1fr)
     text-align: center
-    margin-top: 4px
+    margin-top: 4.4px
   .syslabels .k
-    font-size: 8.5px
-    letter-spacing: 0.9px
+    font-size: 9.4px
+    letter-spacing: 1px
     opacity: 0.5
   .syslabels .v
-    font-size: 10.5px
+    font-size: 11.6px
     line-height: 1.3
     color: var(--cd-mid, #85C1E9)
 
   .grid2
     display: grid
     grid-template-columns: 1fr 1fr
-    column-gap: 12px
+    column-gap: 13.2px
   .trow
     display: flex
     align-items: baseline
-    gap: 6px
-    margin-bottom: 4px
+    gap: 6.6px
+    margin-bottom: 4.4px
   .trow .k
-    width: 22px
+    width: 24.2px
     flex: 0 0 auto
-    font-size: 9px
-    letter-spacing: 0.5px
+    font-size: 9.9px
+    letter-spacing: 0.6px
     opacity: 0.6
   .trow .bar
     flex: 1 1 auto
     align-self: center
-    height: 4px
-    border-radius: 2px
+    height: 4.4px
+    border-radius: 2.2px
     background: var(--cd-track, rgba(31,58,95,0.55))
     overflow: hidden
   .trow .bar i
     display: block
     height: 100%
     width: 0
-    border-radius: 2px
+    border-radius: 2.2px
     background: var(--cd-accent, #5DADE2)
     transition: width 0.45s ease-out, background-color 0.45s
   .trow.hot .bar i
     background: var(--cd-bright, #AED6F1)
   .trow .v
-    width: 40px
+    width: 44px
     flex: 0 0 auto
     text-align: right
-    font-size: 10.5px
+    font-size: 11.6px
     color: var(--cd-accent, #5DADE2)
   .pw
     display: grid
     grid-template-columns: repeat(3, 1fr)
   .pw .l
-    font-size: 8px
-    letter-spacing: 0.7px
+    font-size: 8.8px
+    letter-spacing: 0.8px
     opacity: 0.45
   .pw .n
-    font-size: 10.5px
+    font-size: 11.6px
     line-height: 1.25
     color: var(--cd-mid, #85C1E9)
 
   .netrow
     display: flex
     align-items: center
-    gap: 8px
-    margin-bottom: 2px
+    gap: 8.8px
+    margin-bottom: 2.2px
   .netrow .k
-    width: 66px
+    width: 72.6px
     flex: 0 0 auto
-    font-size: 10.5px
+    font-size: 11.6px
   .netrow .k .gly
-    font-size: 9px
-    margin-right: 4px
+    font-size: 9.9px
+    margin-right: 4.4px
   .netrow .sp
     flex: 1 1 auto
-    height: 15px
+    height: 16.5px
   .netrow .sp svg
     width: 100%
-    height: 15px
+    height: 16.5px
     display: block
   .netrow .sp polyline
     fill: none
@@ -374,10 +374,10 @@ style: """
     display: flex
     align-items: baseline
     justify-content: space-between
-    font-size: 10px
+    font-size: 11px
     line-height: 1.4
-    padding: 0 5px
-    border-radius: 3px
+    padding: 0 5.5px
+    border-radius: 3.3px
     overflow: hidden
   .prow .fill
     position: absolute
@@ -385,7 +385,7 @@ style: """
     bottom: 0
     left: 0
     width: 0
-    border-radius: 3px
+    border-radius: 3.3px
     background: var(--cd-fill, rgba(93,173,226,0.18))
     transition: width 0.4s ease-out
   .prow .n
@@ -393,7 +393,7 @@ style: """
     overflow: hidden
     white-space: nowrap
     text-overflow: ellipsis
-    padding-right: 6px
+    padding-right: 6.6px
   .prow .p
     position: relative
     flex: 0 0 auto
@@ -406,45 +406,45 @@ style: """
   .cc
     display: flex
     flex-direction: column
-    gap: 5px
+    gap: 5.5px
   .cc .q
     display: flex
     align-items: center
-    gap: 6px
+    gap: 6.6px
   .cc .q b
-    width: 30px
+    width: 33px
     flex: 0 0 auto
     font-weight: 400
-    font-size: 9px
-    letter-spacing: 0.5px
+    font-size: 9.9px
+    letter-spacing: 0.6px
     opacity: 0.6
   .cc .mini
     flex: 1 1 auto
-    height: 6px
-    border-radius: 3px
+    height: 6.6px
+    border-radius: 3.3px
     background: var(--cd-track, rgba(31,58,95,0.55))
     overflow: hidden
   .cc .mini i
     display: block
     height: 100%
     width: 0
-    border-radius: 3px
+    border-radius: 3.3px
     background: var(--cd-accent, #5DADE2)
     transition: width 0.45s ease-out
   .cc .v
-    width: 40px
+    width: 44px
     flex: 0 0 auto
     text-align: right
-    font-size: 12px
+    font-size: 13.2px
     color: var(--cd-accent, #5DADE2)
 
   .cal-hdr
     display: flex
     align-items: center
-    font-size: 12px
+    font-size: 13.2px
     font-weight: 700
     color: var(--cd-accent, #5DADE2)
-    margin-bottom: 6px
+    margin-bottom: 6.6px
   .cal-hdr .mo
     overflow: hidden
     white-space: nowrap
@@ -452,13 +452,13 @@ style: """
   .cal-hdr .td
     flex: 0 0 auto
     margin-left: auto
-    padding: 0 4px
-    font-size: 9px
+    padding: 0 4.4px
+    font-size: 9.9px
     font-weight: 400
     letter-spacing: 0.4px
     color: var(--cd-bright, #AED6F1)
     opacity: 0.6
-    border-radius: 4px
+    border-radius: 4.4px
   .cal-hdr .td.btn
     cursor: pointer
     opacity: 0.85
@@ -467,13 +467,13 @@ style: """
     background: var(--cd-fill, rgba(93,173,226,0.18))
   .cal-hdr .nav
     flex: 0 0 auto
-    width: 14px
+    width: 15.4px
     text-align: center
-    font-size: 15px
-    line-height: 15px
+    font-size: 16.5px
+    line-height: 16.5px
     color: var(--cd-bright, #AED6F1)
     opacity: 0.45
-    border-radius: 4px
+    border-radius: 4.4px
     cursor: pointer
     transition: opacity 0.15s, background 0.15s
   .cal-hdr .nav:hover
@@ -481,22 +481,22 @@ style: """
     background: var(--cd-fill, rgba(93,173,226,0.18))
   .grid
     display: grid
-    grid-template-columns: 17px repeat(7, 1fr)
+    grid-template-columns: 18.7px repeat(7, 1fr)
     row-gap: 1px
   .dow
-    font-size: 8px
+    font-size: 8.8px
     letter-spacing: 0.4px
     text-align: center
     color: var(--cd-bright, #AED6F1)
     opacity: 0.5
-    padding-bottom: 3px
+    padding-bottom: 3.3px
     border-bottom: 1px solid var(--cd-rule, rgba(93,173,226,0.14))
-    margin-bottom: 3px
+    margin-bottom: 3.3px
   .cw
-    height: 19px
-    line-height: 19px
+    height: 20.9px
+    line-height: 20.9px
     text-align: center
-    font-size: 8.5px
+    font-size: 9.4px
     color: var(--cd-bright, #AED6F1)
     opacity: 0.3
     border-right: 1px solid var(--cd-rule-faint, rgba(93,173,226,0.12))
@@ -505,11 +505,11 @@ style: """
     line-height: normal
     opacity: 0.3
   .cell
-    height: 19px
-    line-height: 19px
+    height: 20.9px
+    line-height: 20.9px
     text-align: center
-    font-size: 10.5px
-    border-radius: 5px
+    font-size: 11.6px
+    border-radius: 5.5px
     cursor: pointer
     transition: background 0.15s
   .cell.we
