@@ -52,7 +52,7 @@ refreshFrequency: 5000
 style: """
   top: 18px
   left: 12px
-  width: 238px
+  width: 214.2px
   height: 884px
   box-sizing: border-box
   overflow: hidden
@@ -220,8 +220,8 @@ style: """
   .fc .d
     font-size: 9.9px
     opacity: 0.5
-  // La striscia occupa tutta la larghezza della card, e a 207 punti ogni giorno
-  // ne ha piu' di 41: icone e temperature possono permettersi di crescere.
+  // La striscia occupa tutta la larghezza della card, e a 183 punti ogni giorno
+  // ne ha piu' di 36: icone e temperature possono permettersi di crescere.
   .fc .i
     font-family: 'CDFeather'
     font-size: 18.7px
