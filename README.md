@@ -76,6 +76,28 @@ do not fight over where they sit. For the same reason its collector is a copy ra
 the folder it would have called may not be there. Like the calendar, a fix to it has to be made
 twice.
 
+#### Sliding in from the edge
+
+With `SLIDE` on — a knob at the top of the file, on by default — the panel parks itself just past
+the screen edge and comes back when the pointer reaches a 6-point strip running along that edge,
+then retires again 350 ms after the pointer leaves. It moves on `transform`, never on `top`/`left`,
+which are the fields the drag writes to: the two never collide, and the card stays logically where
+you left it. Which edge it leaves by is decided from where the card sits, so dragging it to the
+right half of the screen makes it leave to the right.
+
+The strip and the card count as one area — being on either keeps the panel out. That is not a
+nicety: the strip is the last child in the document, so it covers the card's first two points, and
+without it a pointer resting on the edge would leave the card without ever entering it, retiring
+the panel under a mouse that had not moved. The pin under the lock keeps it out for good: one
+click and it stays until you click again, and like the lock the state survives a restart — left
+pinned, it comes up pinned, without sliding away and back first.
+
+Two things worth knowing. The strip swallows desktop clicks in its 6-point band. And if you leave
+the panel by crossing straight onto a window, the desktop layer stops receiving mouse events
+altogether, so no `mouseleave` arrives and the panel can stay out until the pointer passes over
+bare desktop again. Setting `SLIDE` to `false` removes the strip, the pin and the movement, and
+gives back the fixed panel.
+
 The time comes from the browser, not from the command: one pass of the panel takes about a second
 and runs every five, which is no way to keep seconds. It reads the same system clock, redraws once
 a second and re-aligns to the edge of the next one each time, so it does not drift away from the

@@ -13,6 +13,15 @@
 # I dati arrivano da scripts/collect.sh, che richiama i collector dei singoli
 # widget in parallelo: la logica di raccolta resta scritta una volta sola.
 
+# Manopole. Stanno qui e non in uno script perche' le legge il browser.
+#
+# Con SLIDE la card si ritira oltre il bordo dello schermo e torna quando il
+# mouse arriva sul bordo stesso. Messo a false, il pannello resta fermo dov'e'
+# e non viene creata nessuna striscia sensibile: il widget e' quello di prima.
+SLIDE = true
+SLIDE_EDGE = 6      # larghezza della striscia sensibile sul bordo, in punti
+SLIDE_DELAY = 350   # quanto aspetta, uscito il mouse, prima di ritirarsi
+
 # Rimettere la card dove l'hai lasciata, prima che si veda altrove.
 #
 # Nota sui limiti: il default qui sotto e' l'angolo in alto a sinistra, come le
@@ -76,6 +85,11 @@ style: """
   user-select: none
   pointer-events: auto
   cursor: grab
+  // Entrata e uscita dal bordo: sul transform e non su top/left, che sono i
+  // campi dove scrive il trascinamento. Cosi' le due cose non si pestano i
+  // piedi e la card resta "logicamente" dove l'hai lasciata.
+  transition: transform 0.35s cubic-bezier(0.22, 1, 0.36, 1)
+  will-change: transform
 
   // La card e' una colonna flex, e un figlio flex per difetto si lascia
   // comprimere: quando il contenuto sfiora l'altezza, le righe dei processi si
@@ -103,6 +117,33 @@ style: """
   .lock-btn:hover
     opacity: 1
   .lock-btn svg
+    width: 16.5px
+    height: 16.5px
+    display: block
+
+  // Lo spillo sta sotto il lucchetto e si comporta come lui: invisibile finche'
+  // non passi sopra la card. Piantato cambia verso -- dritto invece che di
+  // traverso -- ma non l'opacita': a mouse lontano la card resta pulita come
+  // prima, e se ti chiedi perche' non si ritira basta passarci sopra.
+  .pin-btn
+    position: absolute
+    top: 34.1px
+    right: 9.9px
+    color: var(--cd-bright, #AED6F1)
+    width: 16.5px
+    height: 16.5px
+    opacity: 0
+    cursor: pointer
+    transition: opacity 0.2s, transform 0.2s
+    transform: rotate(-40deg)
+    z-index: 10
+  &:hover .pin-btn
+    opacity: 0.55
+  .pin-btn:hover
+    opacity: 1
+  .pin-btn.on
+    transform: rotate(0deg)
+  .pin-btn svg
     width: 16.5px
     height: 16.5px
     display: block
@@ -569,6 +610,7 @@ render: -> """
     @font-face{font-family:'CDBebas';src:url('cosmoduck-all-clock.widget/fonts/BebasNeue-Regular.ttf') format('truetype');}
     @font-face{font-family:'CDFeather';src:url('cosmoduck-all-clock.widget/fonts/feather.ttf') format('truetype');}
   </style>
+  <div class="pin-btn" id="pin-toggle"></div>
   <div class="lock-btn" id="lock-toggle"></div>
 
   <svg class="clk" viewBox="0 0 242.6 115" preserveAspectRatio="none">
@@ -830,7 +872,7 @@ afterRender: (domEl) ->
     openCal($(e.currentTarget).attr('data-date'))
 
   $(domEl).on 'mousedown', (e) ->
-    return if isLocked or $(e.target).closest('.lock-btn').length
+    return if isLocked or $(e.target).closest('.lock-btn, .pin-btn').length
     hasMoved = false
     isDragging = true
     $(domEl).addClass('dragging')
@@ -858,6 +900,95 @@ afterRender: (domEl) ->
       localStorage.setItem("#{P}_pos_left2", domEl.style.left)
       $(document).off 'mousemove', mouseMoveHandler
       $(document).off 'mouseup', mouseUpHandler
+      place() if SLIDE   # trascinata altrove, la striscia la segue
+
+  # ── entra e esce dal bordo ─────────────────────────────────────────
+  # La striscia sensibile non puo' stare dentro la card: ha overflow hidden, e
+  # soprattutto si sposta insieme a lei -- ritirata fuori schermo non
+  # intercetterebbe piu' niente. Sta accanto, fra i figli di Ubersicht, e viene
+  # rifatta a ogni afterRender perche' un ricaricamento non ne lasci due.
+  #
+  # Striscia e card fanno una zona sola: basta stare su una delle due perche' il
+  # pannello resti a vista. Serve perche' la striscia gli passa sopra -- e'
+  # l'ultima arrivata nel documento -- e col mouse fermo sul bordo, dentro quei
+  # due punti di sovrapposizione, la card non riceverebbe mai mouseenter e si
+  # ritirerebbe sotto un mouse che non si e' mosso. Passando dall'una all'altra
+  # non sfarfalla: il browser manda prima il mouseleave di quella che lasci e
+  # poi il mouseenter di quella che prendi, quindi il ritiro viene prenotato e
+  # subito disdetto.
+  if SLIDE
+    timer = null
+    edge = document.getElementById("#{P}-edge")
+    edge?.remove()
+    edge = document.createElement('div')
+    edge.id = "#{P}-edge"
+    domEl.parentNode.appendChild(edge)
+
+    # Il verso non e' scritto da nessuna parte: lo decide dove sta la card. Se
+    # domani la trascini a destra, esce a destra.
+    side = -> if domEl.offsetLeft + domEl.offsetWidth / 2 < window.innerWidth / 2 then 'left' else 'right'
+
+    place = ->
+      edge.setAttribute 'style', "position:absolute;pointer-events:auto;" +
+        "top:#{domEl.offsetTop}px;height:#{domEl.offsetHeight}px;" +
+        "width:#{SLIDE_EDGE}px;" + (if side() is 'left' then 'left:0;' else 'right:0;')
+
+    show = ->
+      clearTimeout(timer)
+      domEl.style.transform = 'translateX(0)'
+
+    # Piantato: la card resta fuori e non si ritira piu' finche' non lo togli.
+    # Lo stato sopravvive ai riavvii come quello del lucchetto, ed e' letto
+    # prima del ritiro iniziale qui sotto: chi l'ha lasciata piantata se la
+    # ritrova piantata, senza vederla scivolare via e tornare.
+    PIN_SVG = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 17v5"></path><path d="M9 10.76a2 2 0 0 1-1.11 1.79l-1.78.9A2 2 0 0 0 5 15.24V16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-.76a2 2 0 0 0-1.11-1.79l-1.78-.9A2 2 0 0 1 15 10.76V7a1 1 0 0 1 1-1 2 2 0 0 0 0-4H8a2 2 0 0 0 0 4 1 1 0 0 1 1 1z"></path></svg>'
+    isPinned = localStorage.getItem("#{P}_pinned") == 'true'
+    $pin = $(domEl).find('#pin-toggle')
+    $pin.html(PIN_SVG)
+    updatePinUI = -> $pin.toggleClass('on', isPinned)
+    updatePinUI()
+
+    $pin.on 'click', (e) ->
+      e.stopPropagation()
+      isPinned = !isPinned
+      localStorage.setItem("#{P}_pinned", isPinned)
+      updatePinUI()
+      # Togliendolo non la si manda via sotto il mouse che ha appena cliccato:
+      # se ne andra' da sola quando il mouse esce, come tutte le altre volte.
+      show() if isPinned
+
+    hide = (now) ->
+      clearTimeout(timer)
+      return if isDragging or isPinned
+      # Dodici punti oltre il bordo: la card ha un'ombra e un vetro sfumato, e
+      # a filo esatto ne resterebbe una riga.
+      dx = if side() is 'left'
+        -(domEl.offsetLeft + domEl.offsetWidth + 12)
+      else
+        window.innerWidth - domEl.offsetLeft + 12
+      if now
+        # Alla partenza si va fuori senza farsi vedere: con la transizione
+        # accesa la card scivolerebbe via da sola a ogni ricaricamento.
+        domEl.style.transition = 'none'
+        domEl.style.transform = "translateX(#{dx}px)"
+        domEl.offsetHeight     # forza il ricalcolo prima di riaccenderla
+        domEl.style.transition = ''
+      else
+        domEl.style.transform = "translateX(#{dx}px)"
+
+    later = -> timer = setTimeout(hide, SLIDE_DELAY)
+    # addEventListener e non $(domEl).on: jQuery non ascolta mouseenter davvero,
+    # lo ricava da mouseover guardando da dove vieni. Funziona col mouse vero ma
+    # non con un evento costruito a mano, e questa e' roba che si vuole poter
+    # provare senza mettercisi davanti.
+    for el in [edge, domEl]
+      el.addEventListener 'mouseenter', show
+      el.addEventListener 'mouseleave', later
+    place()
+    hide(true)
+  else
+    # Card fissa: non c'e' niente da piantare.
+    $(domEl).find('#pin-toggle').remove()
 
 update: (output, domEl) ->
   try
