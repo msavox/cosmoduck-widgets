@@ -42,12 +42,13 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 | **Hardware Monitor** | CPU/GPU die temperature as gauges (via macmon), battery charge with time to empty or to full, CPU/GPU/System power in watts over the last two minutes' trace |
 | **Claude Code** | Model + reasoning effort in use, real session (5h) and weekly rate-limit usage with % fill bars and next reset time |
 | **Theme** | Nothing — invisible. Derives the accent palette from the wallpaper and publishes it to all the others |
-| **All in one** | Every card above except the clock, calendar included, in a single 238×884 panel |
+| **All in one** | Every card above except the clock, calendar included, in a single 214×884 panel |
+| **All in one + clock** | The same panel with the clock back on top of it |
 
 ## All in one
 
 `cosmoduck-all.widget` puts weather, system rings, sensors and battery, network, processes,
-Claude usage and the month grid into one panel 238 points wide, for anyone who would rather have a
+Claude usage and the month grid into one panel 214 points wide, for anyone who would rather have a
 block than a column. Only the clock stays out: it is meant to be read across the room, and it
 gains nothing from being folded into a dashboard.
 
@@ -58,6 +59,27 @@ change to the grid has to be made twice. That also means it needs those widget f
 be present, even if you drag the individual cards off-screen or keep them hidden; a folder that is
 missing simply leaves its section blank. One pass costs about a second of wall time, nearly all of
 it the network collector, which has to watch the counters for a second to know the rate.
+
+### With the clock
+
+`cosmoduck-all-clock.widget` is that same panel with the clock put back on top. The digits are the
+clock card's own — 118-point type, the two layers with their colours inverted, the same eleven per
+cent of vertical stretch — but hours and minutes sit side by side rather than stacked, 18 points
+apart. Under them, on one line in the seconds' own type: the weekday spelled out under the hours
+and flush left with them, the seconds under the minutes and flush right with those. Stacked they would want
+180 points of height on top of a panel that already runs to nine hundred; this way they cost 97,
+and the panel goes from 884 points to 995.
+
+It is a variant, not an add-on. Install it *instead of* `cosmoduck-all.widget` — with both in the
+widgets folder you get the same panel twice. It keeps its own position and lock state, so the two
+do not fight over where they sit. For the same reason its collector is a copy rather than a call:
+the folder it would have called may not be there. Like the calendar, a fix to it has to be made
+twice.
+
+The time comes from the browser, not from the command: one pass of the panel takes about a second
+and runs every five, which is no way to keep seconds. It reads the same system clock, redraws once
+a second and re-aligns to the edge of the next one each time, so it does not drift away from the
+clock in the menu bar.
 
 ## Configuration
 - **Accent from the wallpaper** — `cosmoduck-theme.widget` draws nothing. Every 5 s it finds the
