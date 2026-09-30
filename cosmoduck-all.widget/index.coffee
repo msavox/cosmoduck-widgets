@@ -418,8 +418,23 @@ style: """
     font-size: 9.9px
     letter-spacing: 0.6px
     opacity: 0.6
-  .cc .mini
+  // L'orario del reset sta sopra la barra, dentro la riga, e non su una riga
+  // sua: la card ha l'altezza fissa e avanzano una decina di punti, mentre due
+  // righe in piu' ne vogliono una ventina. Cosi' la riga cresce di mezzo punto
+  // e la barra tiene tutta la larghezza.
+  .cc .tr
     flex: 1 1 auto
+    display: flex
+    flex-direction: column
+    gap: 2.2px
+  .cc .rs
+    font-size: 8.8px
+    line-height: 1
+    letter-spacing: 0.4px
+    text-align: right
+    opacity: 0.6
+  .cc .mini
+    flex: 0 0 auto
     height: 6.6px
     border-radius: 3.3px
     background: var(--cd-track, rgba(31,58,95,0.55))
@@ -598,8 +613,8 @@ render: -> """
   <div class="rule"></div>
   <div class="sec"><span>CLAUDE</span><span class="st" id="a-ccmodel">—</span></div>
   <div class="cc">
-    <span class="q"><b>SESS</b><span class="mini"><i id="a-ccsbar"></i></span><span class="v" id="a-ccs">--</span></span>
-    <span class="q"><b>WEEK</b><span class="mini"><i id="a-ccwbar"></i></span><span class="v" id="a-ccw">--</span></span>
+    <span class="q"><b>SESS</b><span class="tr"><span class="rs" id="a-ccsrs">&nbsp;</span><span class="mini"><i id="a-ccsbar"></i></span></span><span class="v" id="a-ccs">--</span></span>
+    <span class="q"><b>WEEK</b><span class="tr"><span class="rs" id="a-ccwrs">&nbsp;</span><span class="mini"><i id="a-ccwbar"></i></span></span><span class="v" id="a-ccw">--</span></span>
   </div>
 
   <div class="rule"></div>
@@ -942,4 +957,11 @@ update: (output, domEl) ->
       continue unless q
       $el.find(bar).css('width', "#{Math.max(0, Math.min(100, q.pct or 0))}%")
       $el.find(val).text("#{q.pct}%")
+    # Il prossimo reset, come nel widget dedicato: un'ora per la sessione,
+    # giorno e ora per la settimana. La finestra di sessione nasce col primo
+    # messaggio, quindi a Claude fermo non c'e' un orario da dire: IDLE.
+    s = cc.session
+    $el.find('#a-ccsrs').text(
+      if not s then '' else if s.active then "\u21BB #{s.reset}" else 'IDLE')
+    $el.find('#a-ccwrs').text(if cc.week?.reset then "\u21BB #{cc.week.reset.toUpperCase()}" else '')
   return
