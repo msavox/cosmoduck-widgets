@@ -1,8 +1,13 @@
 #!/bin/bash
-# Cosmoduck · tema — trova il wallpaper in uso e ne deriva la palette.
+# Cosmoduck · tema — trova il wallpaper in uso e ne ricava i parametri del tema.
 # Emette su stdout il JSON di palette.jxa (o niente, se qualcosa non torna: il
 # widget tiene allora l'ultima palette buona, e sotto c'e' comunque il colore
-# originale come fallback CSS).
+# originale come fallback CSS). Lo chiama il widget stesso, quando e' in AUTO.
+#
+# Ogni widget ne ha una copia in scripts/, accanto a palette.jxa, perche' si
+# installano uno per uno e nessuno puo' contare sulla cartella di un altro. La
+# copia buona sta in theme/ alla radice del repository: si modifica li' e
+# theme/sync.sh la ridistribuisce.
 export LC_ALL=C PATH="/usr/bin:/bin:$PATH"
 
 # ─── configurazione ────────────────────────────────────────────────────────────
@@ -28,10 +33,17 @@ TWO_TONE=${COSMODUCK_THEME_TWO_TONE:-1}
 # parser dei widget e comparirebbe a schermo come errore di sintassi.
 DIR=$(cd "$(dirname "$0")" && pwd)
 CACHE_DIR="${XDG_CACHE_HOME:-$HOME/.cache}/cosmoduck"
-CACHE="$CACHE_DIR/theme.json"
-CACHE_KEY="$CACHE_DIR/theme.key"
 LOG="$CACHE_DIR/theme.log"
 mkdir -p "$CACHE_DIR" 2>/dev/null
+
+# La cache e' una per versione dell'estrattore, riconosciuta dal suo checksum.
+# Le copie sono tante e possono restare indietro -- aggiorni un widget e non gli
+# altri -- e con una cache sola due versioni diverse se la ruberebbero a ogni
+# giro, rifacendo l'analisi ogni cinque secondi. Copie uguali invece la
+# condividono, qualunque sia la cartella da cui girano.
+VER=$(cksum < "$DIR/palette.jxa" 2>/dev/null | cut -d' ' -f1)
+CACHE="$CACHE_DIR/theme-$VER.json"
+CACHE_KEY="$CACHE_DIR/theme-$VER.key"
 
 # Ubersicht considera in errore un widget il cui comando scriva un solo byte su
 # stderr. Qui stderr deve restare vuoto in ogni caso, quindi i guai si
@@ -134,10 +146,10 @@ elif [ ! -r "$FILE" ]; then
   give_up "wallpaper non leggibile: $FILE (permessi di Ubersicht su quella cartella?)"
 fi
 
-# Nella chiave c'e' anche l'mtime dell'estrattore: se non ci fosse, aggiornare
-# il widget lascerebbe a schermo la palette calcolata dalla versione precedente
-# finche' non cambia il wallpaper.
-KEY="$FILE|$(stat -f %m "$FILE" 2>/dev/null)|$(stat -f %m "$DIR/palette.jxa" 2>/dev/null)|$BLEND|$SAT_FLOOR|$VIVIDNESS|$TWO_TONE"
+# La versione dell'estrattore sta gia' nel nome della cache: qui basta il
+# wallpaper -- percorso e mtime, per quando lo stesso file viene riscritto --
+# piu' la taratura.
+KEY="$FILE|$(stat -f %m "$FILE" 2>/dev/null)|$BLEND|$SAT_FLOOR|$VIVIDNESS|$TWO_TONE"
 if [ -r "$CACHE" ] && [ -r "$CACHE_KEY" ] && [ "$(cat "$CACHE_KEY")" = "$KEY" ]; then
   cat "$CACHE"
   exit 0

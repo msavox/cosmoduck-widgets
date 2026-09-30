@@ -1,15 +1,22 @@
 #!/usr/bin/env osascript -l JavaScript
 // Cosmoduck · palette — estrae un accento dal wallpaper.
 //
-// Uso:  osascript -l JavaScript palette.jxa <file-url-o-path> <blend> <sat-floor> <vividness>
-// Stdout: un oggetto JSON di variabili CSS, o niente (exit 1) se l'immagine non
-// si apre. Nessuna dipendenza: solo il bridge ObjC di JXA.
+// Uso:  osascript -l JavaScript palette.jxa <file-url-o-path> <blend> <sat-floor> <vividness> <two-tone>
+// Stdout: un oggetto JSON con i parametri del tema, o niente (exit 1) se
+// l'immagine non si apre. Nessuna dipendenza: solo il bridge ObjC di JXA.
 //
 // Il tema originale e' una sola tinta (~204 deg) campionata a stop fissi di
-// saturazione e luminosita' — vedi TEMA qui sotto. Quindi adattarlo al
-// wallpaper vuol dire ruotare la tinta e riscalare la saturazione, tenendo la
-// luminosita' dov'e': e' la L che decide se il testo si legge sul vetro scuro,
-// e quella non la puo' dettare una foto.
+// saturazione e luminosita'. Quindi adattarlo al wallpaper vuol dire ruotare la
+// tinta e riscalare la saturazione, tenendo la luminosita' dov'e': e' la L che
+// decide se il testo si legge sul vetro scuro, e quella non la puo' dettare una
+// foto.
+//
+// Qui si decidono solo tinta e scala -- per i segni in primo piano (hue,
+// satScale) e per il supporto (fieldHue, fieldScale) -- piu' se il wallpaper ha
+// una scritta chiara (subject). I colori veri li compone il widget, col blocco
+// cosmoduck-theme del suo index.coffee: e' li' che sta la tabella dei ruoli, ed
+// e' li' che servono, perche' gli stessi colori escono anche da una tinta
+// scelta a mano, mentre la trascini.
 //
 // L'analisi pero' non si fa in HSL, che mente su entrambe le cose che qui
 // contano: i suoi gradi non sono percettivamente uniformi (il giallo occupa una
@@ -42,20 +49,6 @@ var SIDE       = 96;         // lato del bitmap su cui si misura
 var SIDE_HI    = 256;        // e quello per rileggere le macchie di un
                              // wallpaper piatto, dove 96 non basta
 
-// ruolo: [saturazione, luminosita', scarto di tinta] — misurati sui colori
-// hardcoded originali, che non sono su una tinta sola: i tre toni scuri stanno
-// una decina di gradi piu' in la', ed e' quello scarto a dargli il freddo.
-var TEMA = {
-  accent: [0.70, 0.63,  0],  // #5DADE2
-  bright: [0.70, 0.81,  0],  // #AED6F1
-  mid:    [0.70, 0.72,  0],  // #85C1E9
-  deep:   [0.61, 0.40,  0],  // #2874A6
-  shadow: [0.51, 0.25, 11],  // #1F3A5F
-  text:   [0.41, 0.85,  4],  // #C8D9E8
-  ink:    [0.39, 0.10, 11],  // #0F1722
-  glass:  [0.36, 0.10,  8]   // rgba(16,24,34,.55)
-};
-
 function clamp(v, lo, hi) { return v < lo ? lo : v > hi ? hi : v; }
 
 // ── colore ────────────────────────────────────────────────────────────────────
@@ -69,17 +62,6 @@ function rgbToHsl(r, g, b) {
     h *= 60;
   }
   return [h, s, l];
-}
-
-function hslToRgb(h, s, l) {
-  h = ((h % 360) + 360) % 360;
-  s = clamp(s, 0, 1); l = clamp(l, 0, 1);
-  var a = s * Math.min(l, 1 - l);
-  var f = function (n) {
-    var k = (n + h / 30) % 12;
-    return Math.round(255 * (l - a * Math.max(-1, Math.min(k - 3, 9 - k, 1))));
-  };
-  return [f(0), f(8), f(4)];
 }
 
 function srgbToLinear(c) {
@@ -121,11 +103,6 @@ function okHueToHslHue(hue, chroma) {
   var rgb = oklchToSrgb(0.65, Math.min(chroma, 0.12), hue);
   return rgbToHsl(rgb[0], rgb[1], rgb[2])[0];
 }
-
-function hex(rgb) {
-  return '#' + rgb.map(function (v) { return v.toString(16).padStart(2, '0'); }).join('').toUpperCase();
-}
-function rgba(rgb, a) { return 'rgba(' + rgb[0] + ',' + rgb[1] + ',' + rgb[2] + ',' + a + ')'; }
 
 // In JXA console.log finisce su stderr: Ubersicht legge stdout, quindi il JSON
 // va scritto a mano sul file handle giusto.
@@ -459,32 +436,15 @@ if (accentHue === null && fieldHue === null) {
   fieldHue = accentHue;  fieldScale = accentScale;
 }
 
-// Chi prende la tinta dell'accento e chi quella del fondo. I primi sono i segni
-// in primo piano -- numeri, icone, archi, bordi -- i secondi sono il supporto:
-// vetro, inchiostro, ombre.
-var ACCENT_ROLES = { accent: true, bright: true, mid: true, deep: true };
-// Col soggetto chiaro i ruoli diventano tre: l'accento vero e proprio resta
-// alla macchia, mentre i segni di contorno e il testo si schiariscono fino al
-// neutro, che e' il colore della scritta sul wallpaper.
-var LETTER_ROLES = { bright: true, mid: true, text: true };
-var LETTER_SAT   = 0.25;     // quanto resta della saturazione originale
-
-var c = {};
-Object.keys(TEMA).forEach(function (role) {
-  var h, sc;
-  if (res.subject && LETTER_ROLES[role]) { h = fieldHue;  sc = fieldScale * LETTER_SAT; }
-  else if (ACCENT_ROLES[role])           { h = accentHue; sc = accentScale; }
-  else                                   { h = fieldHue;  sc = fieldScale; }
-  c[role] = hslToRgb(h + TEMA[role][2], clamp(TEMA[role][0] * sc, 0.05, 0.95), TEMA[role][1]);
-});
-
+// Tinte e scale escono intere, senza arrotondare: il widget ci compone sopra
+// colori a otto bit, e un grado tagliato qui puo' spostare un canale di uno.
 out(JSON.stringify({
   source: SRC,
   mode: res.mode,
-  hue: Math.round(accentHue),
-  fieldHue: Math.round(fieldHue),
-  satScale: +accentScale.toFixed(3),
-  fieldScale: +fieldScale.toFixed(3),
+  hue: accentHue,
+  fieldHue: fieldHue,
+  satScale: accentScale,
+  fieldScale: fieldScale,
   accent: res.accent ? { chroma: +res.accent.chroma.toFixed(3),
                          area: +(res.accent.area * 100).toFixed(2),
                          share: +res.accent.share.toFixed(2) } : null,
@@ -492,20 +452,5 @@ out(JSON.stringify({
                        agreement: +res.field.R.toFixed(2) } : null,
   subject: res.subject ? { area: +(res.subject.frac * 100).toFixed(2),
                            lightness: +res.subject.lightness.toFixed(2),
-                           contrast: +res.subject.contrast.toFixed(2) } : null,
-  vars: {
-    '--cd-accent':     hex(c.accent),
-    '--cd-bright':     hex(c.bright),
-    '--cd-mid':        hex(c.mid),
-    '--cd-deep':       hex(c.deep),
-    '--cd-shadow':     hex(c.shadow),
-    '--cd-text':       hex(c.text),
-    '--cd-ink':        hex(c.ink),
-    '--cd-glass':      rgba(c.glass, 0.55),
-    '--cd-border':     rgba(c.accent, 0.22),
-    '--cd-fill':       rgba(c.accent, 0.18),
-    '--cd-rule':       rgba(c.accent, 0.14),
-    '--cd-rule-faint': rgba(c.accent, 0.12),
-    '--cd-track':      rgba(c.shadow, 0.55)
-  }
+                           contrast: +res.subject.contrast.toFixed(2) } : null
 }));

@@ -9,7 +9,7 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 
 ## Features
 - **Frosted glass** — translucent tinted panels with `backdrop-filter` blur, thin blue border and inner highlight. The blur picks up your wallpaper.
-- **Accent from the wallpaper** — an invisible theme widget reads the wallpaper in use, picks the colour your eye picks — the vivid one, not merely the widest — and recolours the whole set to match. Remove the widget and everything falls back to the original blue.
+- **Colours from the wallpaper, or your own** — each widget reads the wallpaper in use, picks the colour your eye picks — the vivid one, not merely the widest — and recolours itself to match. Hover a widget and an ⓘ appears: click it and the card flips over, like a Dashboard widget in Tiger, to show its colour settings — **AUTO** (the wallpaper), **CUSTOM** (your own hue for the marks, one for the glass, and how saturated) or **CLASSIC** (the original blue). Every widget keeps its own choice.
 - **Draggable & lockable** — click‑drag any widget to reposition; each has a small monochrome lock icon (shown on hover) to freeze it. Positions and lock state persist across reboots and refreshes (via `localStorage`).
 - **Real sensors on Apple Silicon** — CPU/GPU die temperature and power draw via [`macmon`](https://github.com/vladkens/macmon) (no `sudo`).
 - **Two‑layer clock** — large Bebas Neue digits with the original Cosmoduck colour‑inversion between hours and minutes.
@@ -41,7 +41,6 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 | **Processes** | Top 3 by CPU and top 3 by memory, each row carrying its own bar |
 | **Hardware Monitor** | CPU/GPU die temperature as gauges (via macmon), battery charge with time to empty or to full, CPU/GPU/System power in watts over the last two minutes' trace |
 | **Claude Code** | Model + reasoning effort in use, real session (5h) and weekly rate-limit usage with % fill bars and next reset time |
-| **Theme** | Nothing — invisible. Derives the accent palette from the wallpaper and publishes it to all the others |
 | **All in one** | Every card above except the clock, calendar included, in a single 214×884 panel |
 | **All in one + clock** | The same panel with the clock back on top of it |
 
@@ -104,16 +103,33 @@ a second and re-aligns to the edge of the next one each time, so it does not dri
 clock in the menu bar.
 
 ## Configuration
-- **Accent from the wallpaper** — `cosmoduck-theme.widget` draws nothing. Every 5 s it finds the
-  wallpaper in use, samples it, and publishes a palette as CSS variables (`--cd-accent`,
-  `--cd-bright`, `--cd-mid`, `--cd-deep`, `--cd-shadow`, `--cd-text`, `--cd-ink`, `--cd-glass` and
-  the translucent `--cd-border` / `--cd-fill` / `--cd-rule` / `--cd-track`). Übersicht puts every
-  widget in one document per screen, so the variables reach all of them at once.
+- **Colours** — every widget has a back. Hover it, click the ⓘ that appears (bottom right, or
+  next to the lock where the corner is taken) and the card turns over to its settings:
 
-  Every colour in the other widgets is written `var(--cd-x, <original colour>)`. **Delete the
-  theme widget and the set goes back to the Cosmoduck blue** — nothing else has to change.
+  | Mode | Colours |
+  |---|---|
+  | **AUTO** | from the wallpaper in use, re-read every 5 s — the default |
+  | **CUSTOM** | *ACCENT* is the hue of the marks (numbers, icons, arcs, borders), *BASE* the hue of the glass, ink and shadows, *SAT* how charged both are |
+  | **CLASSIC** | the original Cosmoduck blue |
 
-  Only the *hue* comes from the wallpaper. Lightness stays where it was, because that is what
+  Touching a slider outside CUSTOM switches to it, starting from the colours on screen, so
+  "this, but a little further along" is one drag. **DONE** turns the card back. The choice is per
+  widget and lives in Übersicht's `localStorage`, next to position and lock state, as
+  `<widget>_theme`.
+
+  The palette is a set of CSS variables — `--cd-accent`, `--cd-bright`, `--cd-mid`, `--cd-deep`,
+  `--cd-shadow`, `--cd-text`, `--cd-ink`, `--cd-glass` and the translucent `--cd-border` /
+  `--cd-fill` / `--cd-rule` / `--cd-track` — set on the widget's own element, and every colour in
+  the widgets is written `var(--cd-x, <original colour>)`.
+
+  Whichever mode is picked, lightness never changes: that is what decides whether text reads on
+  the dark glass. Only hue and saturation move.
+
+  Upgrading from a version with `cosmoduck-theme.widget`: delete that folder. It would do no harm —
+  each widget's own palette wins over the one it publishes — but it would keep reading the
+  wallpaper for nobody.
+
+  In AUTO, only the *hue* comes from the wallpaper. Lightness stays where it was, because that is what
   decides whether text reads on the dark glass, and a photo does not get a vote on it. Saturation
   scales with the wallpaper's own, between a floor and a ceiling: a washed-out picture gives a
   quieter theme, a vivid one a livelier theme, neither an illegible one.
@@ -160,7 +176,8 @@ clock in the menu bar.
   | is black and white | go greyscale |
   | cannot be read (dynamic wallpaper, no permission) | keep the last good palette |
 
-  Tune it at the top of `cosmoduck-theme.widget/scripts/collect.sh`:
+  Tune it at the top of `scripts/theme.sh` in each widget (or of `theme/theme.sh`, then run
+  `theme/sync.sh` — see below):
 
   | Variable | Default | Meaning |
   |---|---|---|
@@ -177,12 +194,22 @@ clock in the menu bar.
   permission**. Only if that fails does it ask System Events, and *that* raises the usual
   *"Übersicht wants to control System Events"* prompt. Decoding the picture costs a couple of
   tenths of a second, so the result is cached in `~/.cache/cosmoduck/` and recomputed only when
-  the wallpaper, its mtime or the tuning changes.
+  the wallpaper, its mtime or the tuning changes. The reading is also shared: the widgets on one
+  screen that are in AUTO take turns rather than each running the script, so ten widgets cost what
+  one does.
 
-  Two known limits: the wallpaper can differ per display and per Space, while the palette is one
+  Two known limits: the wallpaper can differ per display and per Space, while the reading is one
   per screen — the most recently set wallpaper wins; and a *dynamic* wallpaper (the `hello …` ones, `.madesktop`)
   is not an image file, so it cannot be read — the last good palette stays, and
   `~/.cache/cosmoduck/theme.log` says so.
+
+  **One theme, ten copies.** Widgets are installed one by one, so none can rely on another's
+  folder: each carries its own `scripts/theme.sh` and `scripts/palette.jxa`, plus the block between
+  `# ▼ cosmoduck-theme` and `# ▲ cosmoduck-theme` in its `index.coffee`, which composes the colours
+  and draws the back. The originals live in `theme/` at the top of this repository. Change them
+  there and run `theme/sync.sh` to copy them into every widget; `theme/sync.sh --check` changes
+  nothing and says which widgets have fallen behind. The cache is kept per version of
+  `palette.jxa`, so a widget left on an older copy does not keep invalidating the others'.
 - **Weather** — needs a free [OpenWeatherMap](https://openweathermap.org/api) key. Keep it out of
   the repo, in `~/.config/cosmoduck/weather.env`:
 
