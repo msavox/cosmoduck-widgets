@@ -5,7 +5,7 @@ A blue, monospaced-glass widget set for macOS — a faithful port of the **Regul
 Made for a MacBook Air M‑series, tuned on a notch display.
 
 ## Preview
-![Preview](preview.png?v=2)
+![Preview](preview.png?v=3)
 
 ## Features
 - **Frosted glass** — translucent tinted panels with `backdrop-filter` blur, thin blue border and inner highlight. The blur picks up your wallpaper.
