@@ -16,7 +16,7 @@ Made for a MacBook Air M‑series, tuned on a notch display.
 - **Ring gauges** — CPU, RAM and disk usage as arcs around chip/CPU glyphs, with a legend showing CPU load plus free RAM and free disk space.
 
 ## Installation
-1. **[Download `cosmoduck-widgets.zip`](https://github.com/msavox/cosmoduck-widgets/raw/main/cosmoduck-widgets.zip)**
+1. **Download `cosmoduck-widgets-<version>.zip` from the [latest release](https://github.com/msavox/cosmoduck-widgets/releases/latest)**
 2. Unzip it into your Übersicht widgets folder:
    `~/Library/Application Support/Übersicht/widgets/`
 3. Make the scripts executable (once):
